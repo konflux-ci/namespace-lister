@@ -25,17 +25,21 @@ func run(l *slog.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// create controller
+	// create cache
 	l.Info("creating cache")
-	ctrl, err := NewCache(ctx, l)
+	cache, err := BuildAndStartCache(ctx)
 	if err != nil {
 		return err
 	}
 
+	// create the authorizer and the namespace lister
+	auth := NewAuthorizer(ctx, cache, l)
+	nsl := NewNamespaceLister(cache, auth, l)
+
 	// build http server
 	l.Info("building server")
 	userHeader := getHeaderUsername()
-	s := NewServer(l, ctrl, userHeader)
+	s := NewServer(l, nsl, userHeader)
 
 	// start the server
 	l.Info("serving...")

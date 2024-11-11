@@ -25,10 +25,10 @@ func addLogMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
 	}
 }
 
-func NewServer(l *slog.Logger, cache *Cache, userHeader string) *NamespaceListerServer {
+func NewServer(l *slog.Logger, lister NamespaceLister, userHeader string) *NamespaceListerServer {
 	// configure the server
 	h := http.NewServeMux()
-	h.Handle(patternGetNamespaces, addLogMiddleware(l, newListNamespacesHandler(l, cache, userHeader)))
+	h.Handle(patternGetNamespaces, addLogMiddleware(l, NewListNamespacesHandler(l, lister, userHeader)))
 	return &NamespaceListerServer{
 		Server: &http.Server{
 			Addr:              getAddress(),

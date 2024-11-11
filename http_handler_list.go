@@ -9,26 +9,26 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-var _ http.Handler = &listNamespacesHandler{}
+var _ http.Handler = &ListNamespacesHandler{}
 
-type listNamespacesHandler struct {
+type ListNamespacesHandler struct {
 	log        *slog.Logger
-	cache      *Cache
+	lister     NamespaceLister
 	userHeader string
 }
 
-func newListNamespacesHandler(log *slog.Logger, cache *Cache, userHeader string) http.Handler {
-	return &listNamespacesHandler{
+func NewListNamespacesHandler(log *slog.Logger, lister NamespaceLister, userHeader string) http.Handler {
+	return &ListNamespacesHandler{
 		log:        log,
-		cache:      cache,
+		lister:     lister,
 		userHeader: userHeader,
 	}
 }
 
-func (h *listNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("received list request")
 	// retrieve projects as the user
-	nn, err := h.cache.ListNamespaces(r.Context(), r.Header.Get(h.userHeader))
+	nn, err := h.lister.ListNamespaces(r.Context(), r.Header.Get(h.userHeader))
 	if err != nil {
 		serr := &kerrors.StatusError{}
 		if errors.As(err, &serr) {
@@ -55,7 +55,7 @@ func (h *listNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	h.write(w, b)
 }
 
-func (h *listNamespacesHandler) write(w http.ResponseWriter, data []byte) bool {
+func (h *ListNamespacesHandler) write(w http.ResponseWriter, data []byte) bool {
 	if _, err := w.Write(data); err != nil {
 		h.log.Error("error writing reply", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
