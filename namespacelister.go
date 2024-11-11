@@ -34,7 +34,7 @@ func NewNamespaceLister(reader client.Reader, authorizer *rbac.RBACAuthorizer, l
 }
 
 func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
-	// list role bindings
+	// list all namespaces
 	nn := corev1.NamespaceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "NamespaceList",
