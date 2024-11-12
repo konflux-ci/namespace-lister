@@ -33,3 +33,7 @@ tidy: ## Run go tidy against code.
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	$(GO) fmt ./...
+
+.PHONY: test
+test: ## Run go test against code.
+	$(GO) test ./...
