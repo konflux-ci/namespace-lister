@@ -12,34 +12,42 @@ import (
 )
 
 func NewAuthorizer(ctx context.Context, cli client.Reader, l *slog.Logger) *rbac.RBACAuthorizer {
-	aur := &crAuthRetriever{cli, ctx, l}
+	aur := &CRAuthRetriever{cli, ctx, l}
 	ra := rbac.New(aur, aur, aur, aur)
 	return ra
 }
 
-type crAuthRetriever struct {
-	client.Reader
+type CRAuthRetriever struct {
+	cli client.Reader
 	ctx context.Context
 	l   *slog.Logger
 }
 
-func (r *crAuthRetriever) GetRole(namespace, name string) (*rbacv1.Role, error) {
+func NewCRAuthRetriever(ctx context.Context, cli client.Reader, l *slog.Logger) *CRAuthRetriever {
+	return &CRAuthRetriever{
+		cli: cli,
+		ctx: ctx,
+		l:   l,
+	}
+}
+
+func (r *CRAuthRetriever) GetRole(namespace, name string) (*rbacv1.Role, error) {
 	ro := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 	}
-	if err := r.Get(r.ctx, client.ObjectKeyFromObject(&ro), &ro); err != nil {
+	if err := r.cli.Get(r.ctx, client.ObjectKeyFromObject(&ro), &ro); err != nil {
 		return nil, err
 	}
 	r.l.Debug("getting role", "namespace", namespace, "name", name, "role", ro)
 	return &ro, nil
 }
 
-func (r *crAuthRetriever) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {
+func (r *CRAuthRetriever) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {
 	rbb := rbacv1.RoleBindingList{}
-	if err := r.List(r.ctx, &rbb, client.InNamespace(namespace)); err != nil {
+	if err := r.cli.List(r.ctx, &rbb, client.InNamespace(namespace)); err != nil {
 		return nil, err
 	}
 	r.l.Debug("listing rolebindings", "namespace", namespace, "rolebindings", rbb)
@@ -51,22 +59,22 @@ func (r *crAuthRetriever) ListRoleBindings(namespace string) ([]*rbacv1.RoleBind
 	return rbbp, nil
 }
 
-func (r *crAuthRetriever) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
+func (r *CRAuthRetriever) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
 	ro := rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 	}
-	if err := r.Get(r.ctx, client.ObjectKeyFromObject(&ro), &ro); err != nil {
+	if err := r.cli.Get(r.ctx, client.ObjectKeyFromObject(&ro), &ro); err != nil {
 		return nil, err
 	}
 	r.l.Debug("getting clusterrole", "name", name, "clusterrole", ro)
 	return &ro, nil
 }
 
-func (r *crAuthRetriever) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
+func (r *CRAuthRetriever) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
 	rbb := rbacv1.ClusterRoleBindingList{}
-	if err := r.List(r.ctx, &rbb); err != nil {
+	if err := r.cli.List(r.ctx, &rbb); err != nil {
 		return nil, err
 	}
 	r.l.Debug("listing clusterrolebindings", "clusterrolebindings", rbb)
