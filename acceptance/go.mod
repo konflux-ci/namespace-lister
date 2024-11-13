@@ -4,7 +4,6 @@ go 1.22.2
 
 require (
 	github.com/cucumber/godog v0.14.1
-	github.com/openshift/api v0.0.0-20241024191314-684b2b1679ba
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1

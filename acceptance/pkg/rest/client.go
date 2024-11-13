@@ -11,8 +11,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-
-	openshiftapiv1 "github.com/openshift/api/project/v1"
 )
 
 // NewDefaultClientConfig retrieves the client configuration from the process environment
@@ -46,7 +44,6 @@ func BuildDefaultHostClient() (client.Client, error) {
 func BuildClient(cfg *rest.Config) (client.Client, error) {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(openshiftapiv1.AddToScheme(scheme))
 
 	return client.New(cfg, client.Options{Scheme: scheme})
 }
