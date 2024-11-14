@@ -38,7 +38,7 @@ func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (
 	nn := corev1.NamespaceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "NamespaceList",
-			APIVersion: "",
+			APIVersion: corev1.SchemeGroupVersion.Version,
 		},
 	}
 	if err := c.List(ctx, &nn); err != nil {
@@ -51,8 +51,8 @@ func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (
 			User:            &user.DefaultInfo{Name: username},
 			Verb:            "get",
 			Resource:        "namespaces",
-			APIGroup:        "",
-			APIVersion:      "v1",
+			APIGroup:        corev1.GroupName,
+			APIVersion:      corev1.SchemeGroupVersion.Version,
 			Name:            ns.Name,
 			Namespace:       ns.Name,
 			ResourceRequest: true,
