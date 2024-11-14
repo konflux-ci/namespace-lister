@@ -37,6 +37,9 @@ func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (
 	// list all namespaces
 	nn := corev1.NamespaceList{
 		TypeMeta: metav1.TypeMeta{
+			// even though `kubectl get namespaces -o yaml` is showing `kind: List`
+			// the plain response from the APIServer is using `kind: NamespaceList`.
+			// Use `kubectl get namespaces -v9` to inspect the APIServer plain response.
 			Kind:       "NamespaceList",
 			APIVersion: corev1.SchemeGroupVersion.Version,
 		},
