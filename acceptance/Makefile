@@ -9,7 +9,7 @@ update-namespace-lister: image-build load-image
 
 .PHONY: image-build
 image-build:
-	docker build -t namespace-lister:latest ../
+	$(MAKE) -C .. image-build
 
 .PHONY: kind-create
 kind-create:
