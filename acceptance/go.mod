@@ -1,4 +1,4 @@
-module github.com/konflux-workspaces/namespace-lister/acceptance
+module github.com/konflux-ci/namespace-lister/acceptance
 
 go 1.22.2
 

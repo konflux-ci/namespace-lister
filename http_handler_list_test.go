@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	namespacelister "github.com/konflux-workspaces/namespace-lister"
+	namespacelister "github.com/konflux-ci/namespace-lister"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 

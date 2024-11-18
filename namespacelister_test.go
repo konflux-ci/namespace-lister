@@ -12,7 +12,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	namespacelister "github.com/konflux-workspaces/namespace-lister"
+	namespacelister "github.com/konflux-ci/namespace-lister"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )

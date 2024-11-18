@@ -1,4 +1,4 @@
-module github.com/konflux-workspaces/namespace-lister
+module github.com/konflux-ci/namespace-lister
 
 go 1.22.2
 

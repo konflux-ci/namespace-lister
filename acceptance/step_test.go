@@ -16,8 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	tcontext "github.com/konflux-workspaces/namespace-lister/acceptance/pkg/context"
-	"github.com/konflux-workspaces/namespace-lister/acceptance/pkg/rest"
+	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
+	"github.com/konflux-ci/namespace-lister/acceptance/pkg/rest"
 )
 
 func InjectSteps(ctx *godog.ScenarioContext) {
