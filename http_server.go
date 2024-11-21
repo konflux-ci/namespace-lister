@@ -47,6 +47,7 @@ func (s *NamespaceListerServer) Start(ctx context.Context) error {
 		sctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
 
+		//nolint:contextcheck
 		if err := s.Shutdown(sctx); err != nil {
 			s.logger.Error("error gracefully shutting down the HTTP server", "error", err)
 			os.Exit(1)
