@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -67,7 +68,7 @@ func NewCache(ctx context.Context, l *slog.Logger) (*Cache, error) {
 		}
 	}()
 	if !c.WaitForCacheSync(ctx) {
-		return nil, fmt.Errorf("error starting the cache")
+		return nil, errors.New("error starting the cache")
 	}
 
 	return &Cache{
