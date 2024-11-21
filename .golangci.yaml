@@ -1,0 +1,7 @@
+linters:
+  disable:
+    - exhaustruct
+  presets:
+    - bugs
+    - performance
+    - test
