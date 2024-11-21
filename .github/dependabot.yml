@@ -1,0 +1,23 @@
+version: 2
+updates:
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+- package-ecosystem: gomod
+  directories:
+  - "/"
+  groups:
+    kubernetes:
+      patterns:
+      - "k8s.io/*"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+- package-ecosystem: gomod
+  directories:
+  - "/hack/tools/golang-ci"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
