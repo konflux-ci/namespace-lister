@@ -24,12 +24,12 @@ spec:
       containers:
       - image: openresty/openresty:1.25.3.1-0-jammy
         name: nginx-120
-        command: 
-          - "/usr/local/openresty/bin/openresty"
-          - "-g"
-          - "daemon off;"
-          - -c
-          - /etc/nginx/nginx.conf
+        command:
+        - "/usr/local/openresty/bin/openresty"
+        - "-g"
+        - "daemon off;"
+        - -c
+        - /etc/nginx/nginx.conf
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -65,50 +65,50 @@ spec:
             cpu: 30m
             memory: 128Mi
         volumeMounts:
-          - mountPath: /etc/nginx/nginx.conf
-            subPath: nginx.conf
-            name: namespace-lister-proxy
-            readOnly: true
-          - name: logs
-            mountPath: /var/log/nginx
-          - name: nginx-tmp
-            mountPath: /var/lib/nginx/tmp
-          - name: run
-            mountPath: /run
-          - name: serving-cert
-            mountPath: /mnt
-          - name: nginx-generated-config
-            mountPath: /mnt/nginx-generated-config
-          - name: openresty
-            mountPath: /var/run/openresty
+        - mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          name: namespace-lister-proxy
+          readOnly: true
+        - name: logs
+          mountPath: /var/log/nginx
+        - name: nginx-tmp
+          mountPath: /var/lib/nginx/tmp
+        - name: run
+          mountPath: /run
+        - name: serving-cert
+          mountPath: /mnt
+        - name: nginx-generated-config
+          mountPath: /mnt/nginx-generated-config
+        - name: openresty
+          mountPath: /var/run/openresty
         securityContext:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 1001
       volumes:
-        - configMap:
-            defaultMode: 420
-            name: namespace-lister-proxy
-            items:
-              - key: nginx.conf
-                path: nginx.conf 
+      - configMap:
+          defaultMode: 420
           name: namespace-lister-proxy
-        - name: logs
-          emptyDir: {}
-        - name: nginx-tmp
-          emptyDir: {}
-        - name: run
-          emptyDir: {}
-        - name: serving-cert
-          secret:
-            secretName: serving-cert
-        - name: nginx-generated-config
-          emptyDir: {}
-        - name: api-token
-          secret:
-            secretName: namespace-lister-proxy
-        - name: openresty
-          emptyDir: {}
+          items:
+          - key: nginx.conf
+            path: nginx.conf
+        name: namespace-lister-proxy
+      - name: logs
+        emptyDir: {}
+      - name: nginx-tmp
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+      - name: serving-cert
+        secret:
+          secretName: serving-cert
+      - name: nginx-generated-config
+        emptyDir: {}
+      - name: api-token
+        secret:
+          secretName: namespace-lister-proxy
+      - name: openresty
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -120,18 +120,18 @@ spec:
   type: NodePort
   internalTrafficPolicy: Cluster
   ipFamilies:
-    - IPv4
+  - IPv4
   ipFamilyPolicy: SingleStack
   ports:
-    - name: web
-      port: 8888
-      nodePort: 30010
-      protocol: TCP
-      targetPort: web
-    - name: web-tls
-      port: 9443
-      nodePort: 30011      
-      protocol: TCP
-      targetPort: web-tls
+  - name: web
+    port: 8888
+    nodePort: 30010
+    protocol: TCP
+    targetPort: web
+  - name: web-tls
+    port: 9443
+    nodePort: 30011
+    protocol: TCP
+    targetPort: web-tls
   selector:
     app: namespace-lister-proxy
