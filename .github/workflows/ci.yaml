@@ -35,3 +35,21 @@ jobs:
         with:
           version: ${{ steps.golangci_version.version }}
           working-directory: server
+  lint-yaml:
+    name: Lint YAML manifests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      - name: Install yamllint
+        run: |
+          pip3 install --user yamllint
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Run linting
+        run: |
+          yamllint -f github .

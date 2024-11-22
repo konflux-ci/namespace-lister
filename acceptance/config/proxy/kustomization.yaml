@@ -6,6 +6,6 @@ resources:
 - proxy.yaml
 namespace: namespace-lister
 configMapGenerator:
-  - name: namespace-lister-proxy
-    files:
-      - nginx.conf
+- name: namespace-lister-proxy
+  files:
+  - nginx.conf
