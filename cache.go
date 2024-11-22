@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -56,7 +57,7 @@ func BuildAndStartCache(ctx context.Context) (cache.Cache, error) {
 		}
 	}()
 	if !c.WaitForCacheSync(ctx) {
-		return nil, fmt.Errorf("error starting the cache")
+		return nil, errors.New("error starting the cache")
 	}
 
 	return c, nil
