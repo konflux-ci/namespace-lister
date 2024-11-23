@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-logr/logr"
 
@@ -22,7 +24,7 @@ func run(l *slog.Logger) error {
 	log.SetLogger(logr.FromSlogHandler(l.Handler()))
 
 	// setup context
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	// create cache
