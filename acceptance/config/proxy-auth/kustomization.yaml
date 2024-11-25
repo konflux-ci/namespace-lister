@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- certificate.yaml
+- rbac.yaml
+- proxy.yaml
+namespace: namespace-lister
+configMapGenerator:
+  - name: namespace-lister-proxy-auth
+    files:
+      - nginx.conf

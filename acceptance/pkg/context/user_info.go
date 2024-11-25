@@ -24,6 +24,16 @@ func UserInfoFromServiceAccount(sa corev1.ServiceAccount, tkn *authenticationv1.
 	}
 }
 
+func UserInfoFromUsername(username string) UserInfo {
+	return UserInfo{
+		Namespace: "",
+		Name:      username,
+		Kind:      "User",
+		APIGroup:  rbacv1.GroupName,
+		Token:     "",
+	}
+}
+
 func (u *UserInfo) AsSubject() rbacv1.Subject {
 	return rbacv1.Subject{
 		Namespace: u.Namespace,

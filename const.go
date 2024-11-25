@@ -2,7 +2,7 @@ package main
 
 const (
 	EnvLogLevel       string = "LOG_LEVEL"
-	EnvHeaderUsername string = "HEADER_USERNAME"
+	EnvUsernameHeader string = "AUTH_USERNAME_HEADER"
 	EnvAddress        string = "ADDRESS"
 
 	DefaultAddr           string = ":8080"

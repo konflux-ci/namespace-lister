@@ -1,10 +1,8 @@
 package acceptance
 
 import (
-	"cmp"
 	"context"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/cucumber/godog"
@@ -13,28 +11,39 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
-	"github.com/konflux-ci/namespace-lister/acceptance/pkg/rest"
+	arest "github.com/konflux-ci/namespace-lister/acceptance/pkg/rest"
 )
 
 func InjectSteps(ctx *godog.ScenarioContext) {
 	//read
-	ctx.Step(`^user has access to a namespace$`,
+	ctx.Step(`^ServiceAccount has access to a namespace$`,
+		func(ctx context.Context) (context.Context, error) { return UserInfoHasAccessToNNamespaces(ctx, 1) })
+	ctx.Step(`^User has access to a namespace$`,
 		func(ctx context.Context) (context.Context, error) { return UserHasAccessToNNamespaces(ctx, 1) })
-	ctx.Step(`^the user can retrieve the namespace$`, TheUserCanRetrieveTheNamespace)
+	ctx.Step(`^the ServiceAccount can retrieve the namespace$`, TheUserCanRetrieveTheNamespace)
 
 	// list
-	ctx.Step(`^user has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
-	ctx.Step(`^the user can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+	ctx.Step(`^ServiceAccount has access to "([^"]*)" namespaces$`, UserInfoHasAccessToNNamespaces)
+	ctx.Step(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
+	ctx.Step(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+	ctx.Step(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 }
 
 func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
+	runId := tcontext.RunId(ctx)
+	username := fmt.Sprintf("user-%s", runId)
+	userId := tcontext.UserInfoFromUsername(username)
+	ctx = tcontext.WithUser(ctx, userId)
+	return UserInfoHasAccessToNNamespaces(ctx, number)
+}
+
+func UserInfoHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
 	run := tcontext.RunId(ctx)
 	user := tcontext.User(ctx)
 
-	cli, err := rest.BuildDefaultHostClient()
+	cli, err := arest.BuildDefaultHostClient()
 	if err != nil {
 		return ctx, err
 	}
@@ -77,7 +86,7 @@ func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Contex
 }
 
 func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (context.Context, error) {
-	cli, err := buildUserClient(ctx)
+	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
 	if err != nil {
 		return ctx, err
 	}
@@ -106,7 +115,7 @@ func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (c
 func TheUserCanRetrieveTheNamespace(ctx context.Context) (context.Context, error) {
 	run := tcontext.RunId(ctx)
 
-	cli, err := buildUserClient(ctx)
+	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
 	if err != nil {
 		return ctx, err
 	}
@@ -127,16 +136,4 @@ func TheUserCanRetrieveTheNamespace(ctx context.Context) (context.Context, error
 	}
 
 	return ctx, nil
-}
-
-func buildUserClient(ctx context.Context) (client.Client, error) {
-	// build impersonating client
-	cfg, err := rest.NewDefaultClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	cfg.BearerToken = tcontext.User(ctx).Token
-	cfg.Host = cmp.Or(os.Getenv("KONFLUX_ADDRESS"), "https://localhost:10443")
-	return rest.BuildClient(cfg)
 }

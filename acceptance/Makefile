@@ -1,5 +1,5 @@
 .PHONY: prepare
-prepare: image-build kind-create load-image deploy-test-infra deploy-namespace-lister deploy-test-proxy
+prepare: image-build kind-create load-image deploy-test-infra deploy-namespace-lister deploy-test-proxies
 	@:
 
 .PHONY: update-namespace-lister
@@ -26,15 +26,24 @@ deploy-test-infra:
 	kubectl wait --for=condition=Ready --timeout=300s -l 'app.kubernetes.io/instance=cert-manager' -n cert-manager pod
 	kubectl apply -k ./dependencies/cluster-issuer/
 
-.PHONY: deploy-test-proxy
-deploy-test-proxy:
+.PHONY: deploy-test-proxies
+deploy-test-proxies:
 	kubectl apply -k ./config/proxy/
+	kubectl apply -k ./config/proxy-auth/
 
 .PHONY: deploy-namespace-lister
-deploy-namespace-lister:
-	cd ../config/ && \
-		kustomize edit set namespace namespace-lister
-	kubectl apply -k ../config/
+deploy-namespace-lister: $(TMPDIR)
+	-rm -r $(TMPDIR)/config
+	mkdir -p $(TMPDIR)/config
+	( \
+		cd $(TMPDIR)/config && \
+			kustomize init && \
+			kustomize edit add base "../../../config" && \
+			cp "$(ROOT_DIR)/../config/patches/with-header-auth.yaml" . && \
+			kustomize edit add patch --path "with-header-auth.yaml" --group "apps" --kind "Deployment" --name "namespace-lister" --version "v1"\
+			kustomize edit set namespace namespace-lister && \
+			kustomize build | kubectl apply -f - ; \
+	)
 
 .PHONY: create-test-identity
 create-test-identity:
@@ -57,8 +66,10 @@ clean:
 wip: vet clean create-test-identity export-test-identity-kubeconfig
 	kubectl rollout status deployment -n namespace-lister namespace-lister
 	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy
+	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy-auth
 	KUBECONFIG=/tmp/namespace-lister-acceptance-tests-user.kcfg \
 	KONFLUX_ADDRESS=https://localhost:10443 \
+	KONFLUX_ADDRESS_AUTH=https://localhost:11443 \
 	E2E_USE_INSECURE_TLS=true \
 		go test ./... -v --godog.tags=wip --godog.concurrency=1
 
@@ -66,8 +77,10 @@ wip: vet clean create-test-identity export-test-identity-kubeconfig
 test: vet clean create-test-identity export-test-identity-kubeconfig
 	kubectl rollout status deployment -n namespace-lister namespace-lister
 	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy
+	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy-auth
 	KUBECONFIG=/tmp/namespace-lister-acceptance-tests-user.kcfg \
 	KONFLUX_ADDRESS=https://localhost:10443 \
+	KONFLUX_ADDRESS_AUTH=https://localhost:11443 \
 	E2E_USE_INSECURE_TLS=true \
 		go test ./... -v --godog.tags=~skip --godog.concurrency=1
 
@@ -76,6 +89,7 @@ ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 LOCALBIN := $(ROOT_DIR)/bin
 
 OUTDIR := $(ROOT_DIR)/out
+TMPDIR := $(ROOT_DIR)/tmp
 
 GO ?= go
 
@@ -86,6 +100,8 @@ $(LOCALBIN):
 	mkdir $(LOCALBIN)
 $(OUTDIR):
 	@mkdir $(OUTDIR)
+$(TMPDIR):
+	@mkdir $(TMPDIR)
 
 .PHONY: lint
 lint: ## Run go linter.

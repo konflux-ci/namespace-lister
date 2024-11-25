@@ -28,7 +28,7 @@ func run(l *slog.Logger) error {
 	cfg := ctrl.GetConfigOrDie()
 
 	// build the request authenticator
-	ar, _, err := New(cfg)
+	ar, err := New(cfg)
 	if err != nil {
 		return err
 	}
@@ -52,8 +52,7 @@ func run(l *slog.Logger) error {
 
 	// build http server
 	l.Info("building server")
-	userHeader := getHeaderUsername()
-	s := NewServer(l, ar, nsl, userHeader)
+	s := NewServer(l, ar, nsl)
 
 	// start the server
 	return s.Start(ctx)

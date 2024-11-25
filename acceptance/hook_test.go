@@ -1,22 +1,29 @@
 package acceptance
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"os"
+	"slices"
 
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v21"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
 	"github.com/konflux-ci/namespace-lister/acceptance/pkg/rest"
+	arest "github.com/konflux-ci/namespace-lister/acceptance/pkg/rest"
 )
 
 func InjectHooks(ctx *godog.ScenarioContext) {
 	ctx.Before(injectRun)
 	ctx.Before(prepareTestRunServiceAccount)
+	ctx.Before(injectBuildUserClient)
 }
 
 func injectRun(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
@@ -53,4 +60,42 @@ func prepareTestRunServiceAccount(ctx context.Context, sc *godog.Scenario) (cont
 	// store auth info in context for future use
 	ui := tcontext.UserInfoFromServiceAccount(*sa, tkn)
 	return tcontext.WithUser(ctx, ui), nil
+}
+
+func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
+	if slices.ContainsFunc(sc.Tags, func(t *messages.PickleTag) bool {
+		return t != nil && t.Name == "@proxy-auth"
+	}) {
+		return tcontext.WithBuildUserClientFunc(ctx, buildUserClientForAuthProxy), nil
+	}
+
+	return tcontext.WithBuildUserClientFunc(ctx, buildUserClientWithTokenReview), nil
+}
+
+func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
+	// build impersonating client
+	cfg, err := arest.NewDefaultClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	user := tcontext.User(ctx)
+	cfg.Impersonate.UserName = user.Name
+
+	cfg.Host = cmp.Or(os.Getenv("KONFLUX_ADDRESS_AUTH"), "https://localhost:11443")
+
+	return arest.BuildClient(cfg)
+}
+
+func buildUserClientWithTokenReview(ctx context.Context) (client.Client, error) {
+	// build client with bearer token
+	cfg, err := arest.NewDefaultClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.BearerToken = tcontext.User(ctx).Token
+	cfg.Host = cmp.Or(os.Getenv("KONFLUX_ADDRESS"), "https://localhost:10443")
+
+	return arest.BuildClient(cfg)
 }

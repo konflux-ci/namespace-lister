@@ -25,6 +25,8 @@ spec:
         env:
         - name: LOG_LEVEL
           value: "0"
+        # - name: AUTH_USERNAME_HEADER
+        #   value: "X-User"
         resources:
           limits:
             cpu: 500m

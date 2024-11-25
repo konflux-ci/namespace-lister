@@ -13,14 +13,12 @@ import (
 var _ http.Handler = &ListNamespacesHandler{}
 
 type ListNamespacesHandler struct {
-	lister     NamespaceLister
-	userHeader string
+	lister NamespaceLister
 }
 
-func NewListNamespacesHandler(lister NamespaceLister, userHeader string) http.Handler {
+func NewListNamespacesHandler(lister NamespaceLister) http.Handler {
 	return &ListNamespacesHandler{
-		lister:     lister,
-		userHeader: userHeader,
+		lister: lister,
 	}
 }
 

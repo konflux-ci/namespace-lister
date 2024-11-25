@@ -1,0 +1,41 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: namespace-lister-proxy-auth
+  namespace: namespace-lister
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: namespace-lister-proxy-auth
+  namespace: namespace-lister
+  annotations:
+    kubernetes.io/service-account.name: namespace-lister-proxy-auth
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: impersonate
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - users
+  verbs:
+  - impersonate
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: acceptances-tests-user:proxy-auth
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: impersonate
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: system:serviceaccount:namespace-lister:namespace-lister-proxy-auth
