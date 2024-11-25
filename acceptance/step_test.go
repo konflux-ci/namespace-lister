@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,19 +32,10 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 
 func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
 	run := tcontext.RunId(ctx)
+	user := tcontext.User(ctx)
 
 	cli, err := rest.BuildDefaultHostClient()
 	if err != nil {
-		return ctx, err
-	}
-
-	// create serviceaccount
-	if err := cli.Create(ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "user",
-			Namespace: "default",
-		},
-	}); err != nil && !errors.IsAlreadyExists(err) {
 		return ctx, err
 	}
 
@@ -75,13 +65,7 @@ func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Contex
 				Name:     "namespace-get",
 				APIGroup: rbacv1.GroupName,
 			},
-			Subjects: []rbacv1.Subject{
-				{
-					Kind:     "User",
-					APIGroup: rbacv1.GroupName,
-					Name:     "user",
-				},
-			},
+			Subjects: []rbacv1.Subject{user.AsSubject()},
 		}); err != nil {
 			return ctx, err
 		}
@@ -93,7 +77,7 @@ func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Contex
 }
 
 func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (context.Context, error) {
-	cli, err := buildUserClient()
+	cli, err := buildUserClient(ctx)
 	if err != nil {
 		return ctx, err
 	}
@@ -122,7 +106,7 @@ func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (c
 func TheUserCanRetrieveTheNamespace(ctx context.Context) (context.Context, error) {
 	run := tcontext.RunId(ctx)
 
-	cli, err := buildUserClient()
+	cli, err := buildUserClient(ctx)
 	if err != nil {
 		return ctx, err
 	}
@@ -145,13 +129,14 @@ func TheUserCanRetrieveTheNamespace(ctx context.Context) (context.Context, error
 	return ctx, nil
 }
 
-func buildUserClient() (client.Client, error) {
+func buildUserClient(ctx context.Context) (client.Client, error) {
 	// build impersonating client
 	cfg, err := rest.NewDefaultClientConfig()
 	if err != nil {
 		return nil, err
 	}
-	cfg.Impersonate.UserName = "user"
+
+	cfg.BearerToken = tcontext.User(ctx).Token
 	cfg.Host = cmp.Or(os.Getenv("KONFLUX_ADDRESS"), "https://localhost:10443")
 	return rest.BuildClient(cfg)
 }

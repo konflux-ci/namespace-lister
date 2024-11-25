@@ -25,8 +25,6 @@ spec:
         env:
         - name: LOG_LEVEL
           value: "0"
-        - name: HEADER_USERNAME
-          value: "Impersonate-User"
         resources:
           limits:
             cpu: 500m
@@ -43,14 +41,4 @@ spec:
           capabilities:
             drop:
             - "ALL"
-      volumes:
-      - name: "traefik-plugin-storage"
-        emptyDir:
-          sizeLimit: 20Mi
-      - name: "traefik-static-config"
-        configMap:
-          name: "traefik-sidecar-static-config"
-      - name: "traefik-dynamic-config"
-        configMap:
-          name: "traefik-sidecar-dynamic-config"
       terminationGracePeriodSeconds: 60

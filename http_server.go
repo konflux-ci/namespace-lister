@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
 const (
@@ -31,13 +33,41 @@ func addLogRequestMiddleware(next http.Handler) http.HandlerFunc {
 	}
 }
 
-func NewServer(l *slog.Logger, lister NamespaceLister, userHeader string) *NamespaceListerServer {
+func addAuthnMiddleware(ar authenticator.Request, next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rs, ok, err := ar.AuthenticateRequest(r)
+
+		switch {
+		case err != nil: // error contacting the APIServer for authenticating the request
+			w.WriteHeader(http.StatusUnauthorized)
+			l := getLoggerFromContext(r.Context())
+			l.Error("error authenticating request", "error", err, "request-headers", r.Header)
+			return
+
+		case !ok: // request could not be authenticated
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+
+		default: // request is authenticated
+			// Inject authentication details into request context
+			ctx := r.Context()
+			authCtx := context.WithValue(ctx, ContextKeyUserDetails, rs)
+
+			// serve next request
+			next.ServeHTTP(w, r.WithContext(authCtx))
+		}
+	}
+}
+
+func NewServer(l *slog.Logger, ar authenticator.Request, lister NamespaceLister, userHeader string) *NamespaceListerServer {
 	// configure the server
 	h := http.NewServeMux()
 	h.Handle(patternGetNamespaces,
 		addInjectLoggerMiddleware(l,
 			addLogRequestMiddleware(
-				NewListNamespacesHandler(lister, userHeader))))
+				addAuthnMiddleware(ar,
+					NewListNamespacesHandler(lister, userHeader)))))
+
 	return &NamespaceListerServer{
 		Server: &http.Server{
 			Addr:              getAddress(),

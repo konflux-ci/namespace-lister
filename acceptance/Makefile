@@ -51,7 +51,7 @@ vet:
 
 .PHONY: clean
 clean:
-	kubectl delete namespace -l namespace-lister/scope=acceptance-tests
+	kubectl delete namespace -l 'namespace-lister/scope=acceptance-tests'
 
 .PHONY: wip
 wip: vet clean create-test-identity export-test-identity-kubeconfig

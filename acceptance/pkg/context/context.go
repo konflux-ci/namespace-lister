@@ -11,7 +11,16 @@ type ContextKey string
 const (
 	ContextKeyNamespaces ContextKey = "namespaces"
 	ContextKeyRunId      ContextKey = "run-id"
+	ContextKeyUserInfo   ContextKey = "user-info"
 )
+
+func WithUser(ctx context.Context, userInfo UserInfo) context.Context {
+	return into(ctx, ContextKeyUserInfo, userInfo)
+}
+
+func User(ctx context.Context) UserInfo {
+	return get[UserInfo](ctx, ContextKeyUserInfo)
+}
 
 func WithNamespaces(ctx context.Context, namespaces []corev1.Namespace) context.Context {
 	return into(ctx, ContextKeyNamespaces, namespaces)

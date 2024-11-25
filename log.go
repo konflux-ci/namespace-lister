@@ -33,7 +33,7 @@ func setLoggerIntoContext(ctx context.Context, logger *slog.Logger) context.Cont
 }
 
 func getLoggerFromContext(ctx context.Context) *slog.Logger {
-	if l, ok := ctx.Value(ContextKeyLogger).(*slog.Logger); ok {
+	if l, ok := ctx.Value(ContextKeyLogger).(*slog.Logger); ok && l != nil {
 		return l
 	}
 

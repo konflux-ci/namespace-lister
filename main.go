@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -23,6 +24,15 @@ func main() {
 func run(l *slog.Logger) error {
 	log.SetLogger(logr.FromSlogHandler(l.Handler()))
 
+	// get config
+	cfg := ctrl.GetConfigOrDie()
+
+	// build the request authenticator
+	ar, _, err := New(cfg)
+	if err != nil {
+		return err
+	}
+
 	// setup context
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -31,7 +41,7 @@ func run(l *slog.Logger) error {
 
 	// create cache
 	l.Info("creating cache")
-	cache, err := BuildAndStartCache(ctx)
+	cache, err := BuildAndStartCache(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -43,7 +53,7 @@ func run(l *slog.Logger) error {
 	// build http server
 	l.Info("building server")
 	userHeader := getHeaderUsername()
-	s := NewServer(l, nsl, userHeader)
+	s := NewServer(l, ar, nsl, userHeader)
 
 	// start the server
 	return s.Start(ctx)
