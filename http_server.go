@@ -14,12 +14,18 @@ const (
 
 type NamespaceListerServer struct {
 	*http.Server
-
-	logger *slog.Logger
 }
 
-func addLogMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
+func addInjectLoggerMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := setLoggerIntoContext(r.Context(), l)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+func addLogRequestMiddleware(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l := getLoggerFromContext(r.Context())
 		l.Info("received request", "request", r.URL.Path)
 		next.ServeHTTP(w, r)
 	}
@@ -28,14 +34,16 @@ func addLogMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
 func NewServer(l *slog.Logger, lister NamespaceLister, userHeader string) *NamespaceListerServer {
 	// configure the server
 	h := http.NewServeMux()
-	h.Handle(patternGetNamespaces, addLogMiddleware(l, NewListNamespacesHandler(l, lister, userHeader)))
+	h.Handle(patternGetNamespaces,
+		addInjectLoggerMiddleware(l,
+			addLogRequestMiddleware(
+				NewListNamespacesHandler(lister, userHeader))))
 	return &NamespaceListerServer{
 		Server: &http.Server{
 			Addr:              getAddress(),
 			Handler:           h,
 			ReadHeaderTimeout: 3 * time.Second,
 		},
-		logger: l,
 	}
 }
 
@@ -49,12 +57,11 @@ func (s *NamespaceListerServer) Start(ctx context.Context) error {
 
 		//nolint:contextcheck
 		if err := s.Shutdown(sctx); err != nil {
-			s.logger.Error("error gracefully shutting down the HTTP server", "error", err)
+			getLoggerFromContext(ctx).Error("error gracefully shutting down the HTTP server", "error", err)
 			os.Exit(1)
 		}
 	}()
 
 	// start server
-	s.logger.Info("serving...")
 	return s.ListenAndServe()
 }
