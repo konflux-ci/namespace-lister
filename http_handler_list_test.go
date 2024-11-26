@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 
@@ -27,14 +26,6 @@ func (m NamespaceListerMock) ListNamespaces(ctx context.Context, username string
 var _ = Describe("HttpHandlerList", func() {
 	const userHeader = "X-Email"
 
-	var (
-		log *slog.Logger
-	)
-
-	BeforeEach(func() {
-		log = slog.New(slog.NewTextHandler(io.Discard, nil))
-	})
-
 	DescribeTable("retrieves list of namespaces", func(expected corev1.NamespaceList) {
 		// given
 		eb, err := json.Marshal(expected)
@@ -44,7 +35,7 @@ var _ = Describe("HttpHandlerList", func() {
 		lister := NamespaceListerMock(func(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 			return &expected, nil
 		})
-		handler := namespacelister.NewListNamespacesHandler(log, lister, userHeader)
+		handler := namespacelister.NewListNamespacesHandler(lister, userHeader)
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -78,7 +69,7 @@ var _ = Describe("HttpHandlerList", func() {
 		lister := NamespaceListerMock(func(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 			return nil, expectedErr
 		})
-		handler := namespacelister.NewListNamespacesHandler(log, lister, userHeader)
+		handler := namespacelister.NewListNamespacesHandler(lister, userHeader)
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/", nil)

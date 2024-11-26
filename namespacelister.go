@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log/slog"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,18 +21,18 @@ type namespaceLister struct {
 	client.Reader
 
 	authorizer *rbac.RBACAuthorizer
-	l          *slog.Logger
 }
 
-func NewNamespaceLister(reader client.Reader, authorizer *rbac.RBACAuthorizer, l *slog.Logger) NamespaceLister {
+func NewNamespaceLister(reader client.Reader, authorizer *rbac.RBACAuthorizer) NamespaceLister {
 	return &namespaceLister{
 		Reader:     reader,
 		authorizer: authorizer,
-		l:          l,
 	}
 }
 
 func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
+	l := getLoggerFromContext(ctx)
+
 	// list all namespaces
 	nn := corev1.NamespaceList{
 		TypeMeta: metav1.TypeMeta{
@@ -64,7 +63,7 @@ func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (
 			return nil, err
 		}
 
-		c.l.Info("evaluated user access to namespace", "namespace", ns.Name, "user", username, "decision", d)
+		l.Debug("evaluated user access to namespace", "namespace", ns.Name, "user", username, "decision", d)
 		if d == authorizer.DecisionAllow {
 			rnn = append(rnn, ns)
 		}

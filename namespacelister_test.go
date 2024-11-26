@@ -2,8 +2,6 @@ package main_test
 
 import (
 	"context"
-	"io"
-	"log/slog"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,8 +18,7 @@ import (
 var _ = Describe("Namespacelister", func() {
 
 	var (
-		ctx    = context.TODO()
-		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+		ctx = context.TODO()
 	)
 
 	DescribeTable("when listing namespaces", func(
@@ -34,8 +31,8 @@ var _ = Describe("Namespacelister", func() {
 	) {
 		// given
 		reader := fake.NewClientBuilder().WithLists(&nn, &cr, &crb, &r, &rb).Build()
-		authorizer := namespacelister.NewAuthorizer(ctx, reader, logger)
-		nsl := namespacelister.NewNamespaceLister(reader, authorizer, logger)
+		authorizer := namespacelister.NewAuthorizer(ctx, reader)
+		nsl := namespacelister.NewNamespaceLister(reader, authorizer)
 
 		// when
 		ann, err := nsl.ListNamespaces(ctx, "user")

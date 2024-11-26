@@ -27,6 +27,8 @@ func run(l *slog.Logger) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	ctx = setLoggerIntoContext(ctx, l)
+
 	// create cache
 	l.Info("creating cache")
 	cache, err := BuildAndStartCache(ctx)
@@ -35,8 +37,8 @@ func run(l *slog.Logger) error {
 	}
 
 	// create the authorizer and the namespace lister
-	auth := NewAuthorizer(ctx, cache, l)
-	nsl := NewNamespaceLister(cache, auth, l)
+	auth := NewAuthorizer(ctx, cache)
+	nsl := NewNamespaceLister(cache, auth)
 
 	// build http server
 	l.Info("building server")
@@ -44,6 +46,5 @@ func run(l *slog.Logger) error {
 	s := NewServer(l, nsl, userHeader)
 
 	// start the server
-	l.Info("serving...")
 	return s.Start(ctx)
 }
