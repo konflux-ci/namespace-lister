@@ -11,8 +11,8 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 )
 
-func NewAuthorizer(ctx context.Context, cli client.Reader, l *slog.Logger) *rbac.RBACAuthorizer {
-	aur := &CRAuthRetriever{cli, ctx, l}
+func NewAuthorizer(ctx context.Context, cli client.Reader) *rbac.RBACAuthorizer {
+	aur := &CRAuthRetriever{cli, ctx, getLoggerFromContext(ctx)}
 	ra := rbac.New(aur, aur, aur, aur)
 	return ra
 }

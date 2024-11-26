@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"io"
 	"log/slog"
 	"os"
 	"strconv"
@@ -24,4 +26,17 @@ func getLogLevel() slog.Level {
 		return slog.LevelError
 	}
 	return slog.Level(level)
+}
+
+func setLoggerIntoContext(ctx context.Context, logger *slog.Logger) context.Context {
+	return context.WithValue(ctx, ContextKeyLogger, logger)
+}
+
+func getLoggerFromContext(ctx context.Context) *slog.Logger {
+	if l, ok := ctx.Value(ContextKeyLogger).(*slog.Logger); ok {
+		return l
+	}
+
+	// return a discard all logger
+	return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 }
