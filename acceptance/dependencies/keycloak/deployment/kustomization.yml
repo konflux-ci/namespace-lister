@@ -5,6 +5,9 @@ resources:
 - https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/24.0.2/kubernetes/kubernetes.yml
 - db.yaml
 - configure-keycloak.yaml
+- ingress.yaml
+- certificate.yaml
+- root-ca-cluster-issuer.yaml
 namespace: keycloak
 
 patches:

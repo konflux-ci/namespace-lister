@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-certificate
+  namespace: keycloak
+spec:
+  commonName: idp.namespacelister.localtest.me
+  secretName: keycloak-certificate-managed
+  dnsNames:
+  - idp.namespacelister.localtest.me
+  issuerRef:
+    name: kube-root-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

@@ -23,27 +23,66 @@ load-image:
 patch-coredns:
 	kubectl apply -f ./dependencies/coredns/configmap.yaml
 
+.PHONY: deploy-test-infra
+deploy-test-infra: deploy-cert-manager deploy-test-ingress deploy-idp
+	@:
 
 .PHONY: deploy-test-ingress
 deploy-test-ingress:
 	kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
-	sleep 3
-	kubectl wait --namespace ingress-nginx \
-		--for=condition=ready pod \
+	for i in {1..5}; do kubectl get -n ingress-nginx pod --selector 'app.kubernetes.io/component=controller' && break || sleep 2; done
+	kubectl rollout status deployment --namespace ingress-nginx \
 		--selector=app.kubernetes.io/component=controller \
 		--timeout=90s
 
-.PHONY: deploy-test-infra
-deploy-test-infra: deploy-test-ingress deploy-idp
+.PHONY: deploy-cert-manager
+deploy-cert-manager: $(TMPDIR)
 	kubectl apply -k ./dependencies/cert-manager/
-	sleep 3
-	kubectl wait --for=condition=Ready --timeout=300s -l 'app.kubernetes.io/instance=cert-manager' -n cert-manager pod
+	( \
+		docker exec namespace-lister-control-plane cat /etc/kubernetes/pki/ca.crt > $(TMP_DIR)/ca.crt; \
+		docker exec namespace-lister-control-plane cat /etc/kubernetes/pki/ca.key > $(TMP_DIR)/ca.key ; \
+		kubectl create secret tls kube-root-ca \
+			--namespace cert-manager \
+			--cert=$(TMP_DIR)/ca.crt \
+			--key=$(TMP_DIR)/ca.key \
+			-o yaml --dry-run=client | kubectl apply -f -; \
+	)
+	for i in {1..5}; do kubectl get -n cert-manager deployment --selector 'app.kubernetes.io/instance=cert-manager' && break || sleep 2; done
+	kubectl rollout status deployment -n cert-manager \
+		--selector 'app.kubernetes.io/instance=cert-manager' \
+		--timeout=300s 
 	kubectl apply -k ./dependencies/cluster-issuer/
+
+.PHONY: build-user1-kubeconfig
+build-user1-kubeconfig:
+	kubectl rollout status -n keycloak statefulset keycloak --timeout=90s
+	( \
+		tkn=$$( \
+			curl -f -s -k -L -X POST 'https://idp.namespacelister.localtest.me/idp/realms/redhat-external/protocol/openid-connect/token' \
+        -H 'Content-Type: application/x-www-form-urlencoded' \
+        --data-urlencode 'client_id=cloud-services' \
+        --data-urlencode 'client_secret=client-secret' \
+        --data-urlencode 'grant_type=password' \
+        --data-urlencode 'scope=openid' \
+        --data-urlencode 'username=user1' \
+        --data-urlencode 'password=password' | jq '.access_token' -r ); \
+		kind get kubeconfig --name namespace-lister | \
+			yq '.users[0].user={"token":"'$${tkn}'"}' | \
+			yq 'del(.clusters[0].cluster.certificate-authority-data)' > /tmp/namespace-lister-user1.kcfg \
+	)
 
 .PHONY: deploy-idp
 deploy-idp:
 	kubectl apply -k ./dependencies/keycloak/crd/
 	kubectl apply -k ./dependencies/keycloak/deployment/
+	for i in {1..10}; do kubectl get -n keycloak deployment keycloak-operator && break || sleep 2; done
+	kubectl rollout status --namespace keycloak \
+		deployment keycloak-operator \
+		--timeout=300s
+	for i in {1..10}; do kubectl get -n keycloak statefulset keycloak && break || sleep 2; done
+	kubectl rollout status --namespace keycloak \
+		statefulset keycloak \
+		--timeout=90s
 
 .PHONY: deploy-test-proxy
 deploy-test-proxy:
@@ -96,6 +135,7 @@ ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 LOCALBIN := $(ROOT_DIR)/bin
 
 OUTDIR := $(ROOT_DIR)/out
+TMP_DIR := $(ROOT_DIR)/tmp
 
 GO ?= go
 
@@ -106,6 +146,8 @@ $(LOCALBIN):
 	mkdir $(LOCALBIN)
 $(OUTDIR):
 	@mkdir $(OUTDIR)
+$(TMP_DIR):
+	@mkdir $(TMP_DIR)
 
 .PHONY: lint
 lint: ## Run go linter.
