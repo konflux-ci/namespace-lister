@@ -1,10 +1,10 @@
 ---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-featureGates:
-  "StructuredAuthenticationConfiguration": true
 nodes:
 - role: control-plane
+  labels:
+    ingress-ready: "true"
   kubeadmConfigPatches:
   - |
     kind: InitConfiguration
@@ -16,3 +16,17 @@ nodes:
   - containerPort: 30011
     hostPort: 10443
     protocol: TCP
+  - containerPort: 30080
+    hostPort: 12443
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+
+# not sure we need that
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."idp.namespacelister.localtest.me:443"]
+    endpoint = ["https://idp.namespacelister.localtest.me"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."idp.namespacelister.localtest.me".tls]
+    insecure_skip_verify = true

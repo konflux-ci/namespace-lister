@@ -19,12 +19,31 @@ kind-create:
 load-image:
 	 kind load docker-image --name namespace-lister namespace-lister:latest 
 
+.PHONY: patch-coredns
+patch-coredns:
+	kubectl apply -f ./dependencies/coredns/configmap.yaml
+
+
+.PHONY: deploy-test-ingress
+deploy-test-ingress:
+	kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
+	sleep 3
+	kubectl wait --namespace ingress-nginx \
+		--for=condition=ready pod \
+		--selector=app.kubernetes.io/component=controller \
+		--timeout=90s
+
 .PHONY: deploy-test-infra
-deploy-test-infra:
+deploy-test-infra: deploy-test-ingress deploy-idp
 	kubectl apply -k ./dependencies/cert-manager/
-	sleep 5
+	sleep 3
 	kubectl wait --for=condition=Ready --timeout=300s -l 'app.kubernetes.io/instance=cert-manager' -n cert-manager pod
 	kubectl apply -k ./dependencies/cluster-issuer/
+
+.PHONY: deploy-idp
+deploy-idp:
+	kubectl apply -k ./dependencies/keycloak/crd/
+	kubectl apply -k ./dependencies/keycloak/deployment/
 
 .PHONY: deploy-test-proxy
 deploy-test-proxy:
@@ -55,6 +74,7 @@ clean:
 
 .PHONY: wip
 wip: vet clean create-test-identity export-test-identity-kubeconfig
+	# kubectl rollout status deployment -n keycloak -l 'app=sso'
 	kubectl rollout status deployment -n namespace-lister namespace-lister
 	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy
 	KUBECONFIG=/tmp/namespace-lister-acceptance-tests-user.kcfg \
