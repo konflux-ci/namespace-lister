@@ -8,14 +8,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func BuildAndStartCache(ctx context.Context) (cache.Cache, error) {
-	cfg := ctrl.GetConfigOrDie()
-
+func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, error) {
 	s := runtime.NewScheme()
 	if err := corev1.AddToScheme(s); err != nil {
 		return nil, err

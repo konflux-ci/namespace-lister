@@ -44,7 +44,7 @@ var _ = Describe("HttpHandlerList", func() {
 		lister := NamespaceListerMock(func(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 			return &expected, nil
 		})
-		handler := namespacelister.NewListNamespacesHandler(log, lister, userHeader)
+		handler := namespacelister.NewListNamespacesHandler(log, lister)
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -78,7 +78,7 @@ var _ = Describe("HttpHandlerList", func() {
 		lister := NamespaceListerMock(func(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 			return nil, expectedErr
 		})
-		handler := namespacelister.NewListNamespacesHandler(log, lister, userHeader)
+		handler := namespacelister.NewListNamespacesHandler(log, lister)
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodGet, "/", nil)

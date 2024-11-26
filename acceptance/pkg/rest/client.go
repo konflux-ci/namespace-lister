@@ -42,10 +42,16 @@ func BuildDefaultHostClient() (client.Client, error) {
 }
 
 func BuildClient(cfg *rest.Config) (client.Client, error) {
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	return BuildClientWithOptions(cfg, client.Options{})
+}
 
-	return client.New(cfg, client.Options{Scheme: scheme})
+func BuildClientWithOptions(cfg *rest.Config, options client.Options) (client.Client, error) {
+	if options.Scheme == nil {
+		scheme := runtime.NewScheme()
+		utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	}
+
+	return client.New(cfg, options)
 }
 
 // BuildDefaultRESTMapper builds a RESTMapper from the default client configuration.
