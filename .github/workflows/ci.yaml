@@ -10,6 +10,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  unit-tests:
+    name: Run acceptance tests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Determine golang-ci version
+        run: make test
+
   lint-go:
     name: Lint code
     runs-on: ubuntu-24.04
