@@ -22,8 +22,15 @@ clean: ## Delete local folders.
 	@-rm -r $(OUTDIR)
 
 .PHONY: lint
-lint: ## Run go linter.
-	$(GOLANG_CI) run ./...
+lint: lint-go lint-yaml ## Run all linters.
+
+.PHONY: lint-go
+lint-go: ## Run golangci-lint to lint go code.
+	@$(GOLANG_CI) run ./...
+
+.PHONY: lint-yaml
+lint-yaml: ## Lint yaml manifests.
+	@yamllint .
 
 .PHONY: vet
 vet: ## Run go vet against code.

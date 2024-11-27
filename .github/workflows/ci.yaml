@@ -1,0 +1,52 @@
+name: Lint checks
+
+on: # yamllint disable-line rule:truthy
+  pull_request: {}
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  lint-go:
+    name: Lint code
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Determine golang-ci version
+        id: golangci_version
+        run: |
+          echo "version=$(go mod edit -json hack/tools/golang-ci/go.mod | \
+            jq '.Require | map(select(.Path == "github.com/golangci/golangci-lint"))[].Version')" \
+            >> $GITHUB_OUTPUT
+
+      - name: Lint with golang-ci
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: ${{ steps.golangci_version.version }}
+          working-directory: server
+
+  lint-yaml:
+    name: Lint yaml manifests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install yamllint
+        run: |
+          pip install yamllint
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Lint with yamllint
+        run: make lint
