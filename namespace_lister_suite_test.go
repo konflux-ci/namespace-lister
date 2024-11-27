@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+//nolint:paralleltest
 func TestNamespaceLister(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "NamespaceLister Suite")

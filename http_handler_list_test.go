@@ -3,7 +3,7 @@ package main_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -86,7 +86,7 @@ var _ = Describe("HttpHandlerList", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(wb).To(BeEquivalentTo(expectedErr.Error()))
 	},
-		Entry("unhandled error", fmt.Errorf("unhandled error"), http.StatusInternalServerError),
+		Entry("unhandled error", errors.New("unhandled error"), http.StatusInternalServerError),
 		Entry("handled error", kerrors.NewTimeoutError("timed-out", 200), http.StatusGatewayTimeout),
 	)
 })

@@ -1,4 +1,6 @@
 linters:
+  enable:
+    - ginkgolinter
   disable:
     - exhaustruct
   presets:

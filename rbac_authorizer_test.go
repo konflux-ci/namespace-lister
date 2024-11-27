@@ -19,16 +19,14 @@ import (
 
 var _ = Describe("CRAuthRetriever", func() {
 	var (
-		ctx    context.Context
 		logger *slog.Logger
 	)
 
 	BeforeEach(func() {
-		ctx = context.TODO()
 		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 	})
 
-	It("retrieves clusterrole", func() {
+	It("retrieves clusterrole", func(ctx context.Context) {
 		// given
 		cr := &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "ns-get"},
@@ -44,7 +42,7 @@ var _ = Describe("CRAuthRetriever", func() {
 		Expect(acr).To(Equal(acr))
 	})
 
-	It("retrieves role", func() {
+	It("retrieves role", func(ctx context.Context) {
 		// given
 		r := &rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "ns-get", Namespace: "myns"},
@@ -60,7 +58,7 @@ var _ = Describe("CRAuthRetriever", func() {
 		Expect(ar).To(Equal(ar))
 	})
 
-	It("retrieves rolebinding", func() {
+	It("retrieves rolebinding", func(ctx context.Context) {
 		// given
 		rbl := []client.Object{
 			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "ns-get-0-0", Namespace: "myns-0"}},
@@ -78,7 +76,7 @@ var _ = Describe("CRAuthRetriever", func() {
 		Expect(arbl).To(ConsistOf(rbl[0:2]))
 	})
 
-	It("retrieves clusterrolebinding", func() {
+	It("retrieves clusterrolebinding", func(ctx context.Context) {
 		// given
 		crbl := []client.Object{
 			&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "ns-get-0"}},
