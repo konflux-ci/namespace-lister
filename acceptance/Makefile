@@ -55,8 +55,8 @@ deploy-cert-manager: $(TMPDIR)
 
 .PHONY: build-user1-kubeconfig
 build-user1-kubeconfig:
-	kubectl rollout status -n keycloak statefulset keycloak --timeout=90s
-	( \
+	@kubectl rollout status -n keycloak statefulset keycloak --timeout=90s 1>&2
+	@( \
 		tkn=$$( \
 			curl -f -s -k -L -X POST 'https://idp.namespacelister.localtest.me/idp/realms/redhat-external/protocol/openid-connect/token' \
         -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -68,7 +68,7 @@ build-user1-kubeconfig:
         --data-urlencode 'password=password' | jq '.access_token' -r ); \
 		kind get kubeconfig --name namespace-lister | \
 			yq '.users[0].user={"token":"'$${tkn}'"}' | \
-			yq 'del(.clusters[0].cluster.certificate-authority-data)' > /tmp/namespace-lister-user1.kcfg \
+			yq 'del(.clusters[0].cluster.certificate-authority-data)' \
 	)
 
 .PHONY: deploy-idp
