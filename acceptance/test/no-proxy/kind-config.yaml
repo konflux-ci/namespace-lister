@@ -1,0 +1,16 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+        system-reserved: memory=4Gi
+  extraPortMappings:
+  - containerPort: 30011
+    hostPort: 10443
+    protocol: TCP

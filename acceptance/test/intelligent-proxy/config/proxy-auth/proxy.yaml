@@ -3,13 +3,13 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: namespace-lister-proxy
-  name: namespace-lister-proxy
+    app: namespace-lister-proxy-auth
+  name: namespace-lister-proxy-auth
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: namespace-lister-proxy
+      app: namespace-lister-proxy-auth
   minReadySeconds: 30
   strategy:
     rollingUpdate:
@@ -18,13 +18,44 @@ spec:
   template:
     metadata:
       labels:
-        app: namespace-lister-proxy
+        app: namespace-lister-proxy-auth
     spec:
-      serviceAccountName: namespace-lister-proxy
+      serviceAccountName: namespace-lister-proxy-auth
+      initContainers:
+      - name: add-sva-token-to-nginx-config
+        image: registry.access.redhat.com/ubi9/ubi@sha256:66233eebd72bb5baa25190d4f55e1dc3fff3a9b77186c1f91a0abdb274452072
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          
+          token=$(cat /mnt/api-token/token)
+          token64=$(cat /mnt/api-token/token | base64 -w 0 | head -c-1)
+
+          echo "proxy_set_header Authorization \"Bearer $token\";" > /mnt/nginx-generated-config/bearer.conf
+
+          echo "proxy_set_header Sec-WebSocket-Protocol \"base64url.bearer.authorization.k8s.io.${token64}, base64.binary.k8s.io\";" > /mnt/nginx-generated-config/websocket.conf
+        volumeMounts:
+        - name: nginx-generated-config
+          mountPath: /mnt/nginx-generated-config
+        - name: api-token
+          mountPath: /mnt/api-token
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+        resources:
+          limits:
+            cpu: 50m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
       containers:
       - image: openresty/openresty:1.25.3.1-0-jammy
         name: nginx-120
-        command:
+        command: 
         - "/usr/local/openresty/bin/openresty"
         - "-g"
         - "daemon off;"
@@ -36,8 +67,8 @@ spec:
             path: /health
             port: 9443
             scheme: HTTPS
-          initialDelaySeconds: 30
-          periodSeconds: 60
+          initialDelaySeconds: 3
+          periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 1
         readinessProbe:
@@ -46,8 +77,8 @@ spec:
             path: /health
             port: 9443
             scheme: HTTPS
-          initialDelaySeconds: 30
-          periodSeconds: 30
+          initialDelaySeconds: 3
+          periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 1
         ports:
@@ -67,7 +98,7 @@ spec:
         volumeMounts:
         - mountPath: /etc/nginx/nginx.conf
           subPath: nginx.conf
-          name: namespace-lister-proxy
+          name: namespace-lister-proxy-auth
           readOnly: true
         - name: logs
           mountPath: /var/log/nginx
@@ -88,11 +119,11 @@ spec:
       volumes:
       - configMap:
           defaultMode: 420
-          name: namespace-lister-proxy
+          name: namespace-lister-proxy-auth
           items:
           - key: nginx.conf
-            path: nginx.conf
-        name: namespace-lister-proxy
+            path: nginx.conf 
+        name: namespace-lister-proxy-auth
       - name: logs
         emptyDir: {}
       - name: nginx-tmp
@@ -106,7 +137,7 @@ spec:
         emptyDir: {}
       - name: api-token
         secret:
-          secretName: namespace-lister-proxy
+          secretName: namespace-lister-proxy-auth
       - name: openresty
         emptyDir: {}
 ---
@@ -114,8 +145,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: namespace-lister-proxy
-  name: namespace-lister-proxy
+    app: namespace-lister-proxy-auth
+  name: namespace-lister-proxy-auth
 spec:
   type: NodePort
   internalTrafficPolicy: Cluster
@@ -134,4 +165,4 @@ spec:
     protocol: TCP
     targetPort: web-tls
   selector:
-    app: namespace-lister-proxy
+    app: namespace-lister-proxy-auth

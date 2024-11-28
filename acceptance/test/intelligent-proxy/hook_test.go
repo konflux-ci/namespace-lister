@@ -5,10 +5,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"slices"
 
 	"github.com/cucumber/godog"
-	messages "github.com/cucumber/messages/go/v21"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -63,13 +61,7 @@ func prepareTestRunServiceAccount(ctx context.Context, sc *godog.Scenario) (cont
 }
 
 func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
-	if slices.ContainsFunc(sc.Tags, func(t *messages.PickleTag) bool {
-		return t != nil && t.Name == "@proxy-auth"
-	}) {
-		return tcontext.WithBuildUserClientFunc(ctx, buildUserClientForAuthProxy), nil
-	}
-
-	return tcontext.WithBuildUserClientFunc(ctx, buildUserClientWithTokenReview), nil
+	return tcontext.WithBuildUserClientFunc(ctx, buildUserClientForAuthProxy), nil
 }
 
 func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
@@ -82,7 +74,7 @@ func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
 	user := tcontext.User(ctx)
 	cfg.Impersonate.UserName = user.Name
 
-	cfg.Host = cmp.Or(os.Getenv("KONFLUX_ADDRESS_AUTH"), "https://localhost:11443")
+	cfg.Host = cmp.Or(os.Getenv("KONFLUX_ADDRESS"), "https://localhost:10443")
 
 	return arest.BuildClient(cfg)
 }
