@@ -1,10 +1,10 @@
 ---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-featureGates:
-  "StructuredAuthenticationConfiguration": true
 nodes:
 - role: control-plane
+  labels:
+    ingress-ready: "true"
   kubeadmConfigPatches:
   - |
     kind: InitConfiguration
@@ -12,7 +12,19 @@ nodes:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
         system-reserved: memory=4Gi
+  - |-
+    kind: ClusterConfiguration
+    apiServer:
+      extraArgs:
+        oidc-client-id: account
+        oidc-ca-file: /etc/kubernetes/pki/ca.crt
+        oidc-issuer-url: https://idp.namespacelister.localtest.me/idp/realms/redhat-external
+        oidc-username-claim: email
+        oidc-groups-claim: groups
   extraPortMappings:
   - containerPort: 30011
     hostPort: 10443
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
     protocol: TCP
