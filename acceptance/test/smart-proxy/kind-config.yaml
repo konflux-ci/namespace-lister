@@ -12,5 +12,5 @@ nodes:
         system-reserved: memory=4Gi
   extraPortMappings:
   - containerPort: 30011
-    hostPort: 10443
+    hostPort: 11443
     protocol: TCP

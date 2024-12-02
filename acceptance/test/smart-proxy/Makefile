@@ -3,7 +3,7 @@ include ../../make/*.mk
 CWD ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOT_DIR := $(CWD)/../..
 TMPDIR := $(CWD)/tmp
-KIND_CLUSTER_NAME := namespace-lister-intelligent-proxy
+KIND_CLUSTER_NAME := namespace-lister-smart-proxy
 
 .PHONY: prepare
 prepare: image-build kind-create load-image deploy-test-infra deploy-namespace-lister deploy-test-proxy
@@ -33,8 +33,7 @@ wip: vet clean create-test-identity export-test-identity-kubeconfig
 	kubectl rollout status deployment -n namespace-lister namespace-lister
 	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy-auth
 	KUBECONFIG=/tmp/namespace-lister-acceptance-tests-user.kcfg \
-	KONFLUX_ADDRESS=https://localhost:10443 \
-	KONFLUX_ADDRESS_AUTH=https://localhost:11443 \
+	KONFLUX_ADDRESS=https://localhost:11443 \
 	E2E_USE_INSECURE_TLS=true \
 		go test $(CWD)/... -v --godog.tags=wip --godog.concurrency=1
 
@@ -43,8 +42,7 @@ test: vet clean create-test-identity export-test-identity-kubeconfig
 	kubectl rollout status deployment -n namespace-lister namespace-lister
 	kubectl rollout status deployment -n namespace-lister namespace-lister-proxy-auth
 	KUBECONFIG=/tmp/namespace-lister-acceptance-tests-user.kcfg \
-	KONFLUX_ADDRESS=https://localhost:10443 \
-	KONFLUX_ADDRESS_AUTH=https://localhost:11443 \
+	KONFLUX_ADDRESS=https://localhost:11443 \
 	E2E_USE_INSECURE_TLS=true \
 		go test $(CWD)/... -v --godog.tags=~skip --godog.concurrency=1
 

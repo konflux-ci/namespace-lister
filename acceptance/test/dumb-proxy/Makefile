@@ -3,7 +3,7 @@ include ../../make/*.mk
 CWD ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOT_DIR := $(CWD)/../..
 TMPDIR := $(CWD)/tmp
-KIND_CLUSTER_NAME := namespace-lister-no-proxy
+KIND_CLUSTER_NAME := namespace-lister-dumb-proxy
 
 .PHONY: prepare
 prepare: image-build kind-create load-image deploy-test-infra deploy-namespace-lister deploy-test-proxy
