@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.22 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset@sha256:5374b83337e4450e5acc25ea422a0b494c9473ba4e593ce5091f06687b5b07f7 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM registry.access.redhat.com/ubi9/ubi-micro@sha256:2891f3fe3220cf18bd29daf8718a7bb338fd6072019934ff1061b94b1bdedd44
 WORKDIR /
 COPY --from=builder /namespace-lister/server .
 USER 65532:65532
