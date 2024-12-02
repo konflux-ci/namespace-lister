@@ -26,7 +26,6 @@ func (m NamespaceListerMock) ListNamespaces(ctx context.Context, username string
 }
 
 var _ = Describe("HttpHandlerList", func() {
-	const userHeader = "X-Email"
 	var request *http.Request
 
 	BeforeEach(func() {
