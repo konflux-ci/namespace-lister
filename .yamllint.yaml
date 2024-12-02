@@ -1,5 +1,7 @@
 ---
 extends: relaxed
+ignore:
+- .tekton/
 rules:
   line-length:
     max: 100
