@@ -26,7 +26,12 @@ deploy-namespace-lister: $(TMPDIR)
 			kustomize init && \
 			kustomize edit add base "../../../../../config" && \
 			cp "$(ROOT_DIR)/../config/patches/with-header-auth.yaml" . && \
-			kustomize edit add patch --path "with-header-auth.yaml" --group "apps" --kind "Deployment" --name "namespace-lister" --version "v1"\
+			kustomize edit add patch \
+				--path "with-header-auth.yaml" \
+				--group "apps" \
+				--kind "Deployment" \
+				--name "namespace-lister" \
+				--version "v1" && \
 			kustomize edit set namespace namespace-lister && \
 			kustomize edit set image "namespace-lister:latest=$(IMG)" && \
 			kustomize build | $(KUBECTL_X) apply -f - ; \
