@@ -15,6 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 type NamespaceListerMock func(ctx context.Context, username string) (*corev1.NamespaceList, error)
@@ -25,6 +27,19 @@ func (m NamespaceListerMock) ListNamespaces(ctx context.Context, username string
 
 var _ = Describe("HttpHandlerList", func() {
 	const userHeader = "X-Email"
+	var request *http.Request
+
+	BeforeEach(func() {
+		var err error
+		ctx := context.WithValue(context.TODO(), namespacelister.ContextKeyUserDetails,
+			&authenticator.Response{
+				User: &user.DefaultInfo{
+					Name: "myuser",
+				},
+			})
+		request, err = http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		Expect(err).NotTo(HaveOccurred())
+	})
 
 	DescribeTable("retrieves list of namespaces", func(expected corev1.NamespaceList) {
 		// given
@@ -38,19 +53,15 @@ var _ = Describe("HttpHandlerList", func() {
 		handler := namespacelister.NewListNamespacesHandler(lister)
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
-		r.Header.Add(userHeader, "myuser")
 
 		// when
-		handler.ServeHTTP(w, r)
+		handler.ServeHTTP(w, request)
 
 		// then
 		Expect(w.Result()).NotTo(BeNil())
 		Expect(w.Result().StatusCode).To(Equal(http.StatusOK))
 		Expect(w.Result().Header.Get(namespacelister.HttpContentType)).To(Equal(namespacelister.HttpContentTypeApplication))
-		wb, err := io.ReadAll(w.Result().Body)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(wb).To(Equal(eb))
+		Expect(io.ReadAll(w.Result().Body)).To(Equal(eb))
 	},
 		Entry("empty list", corev1.NamespaceList{}),
 		Entry("non empty list", corev1.NamespaceList{
@@ -72,19 +83,15 @@ var _ = Describe("HttpHandlerList", func() {
 		handler := namespacelister.NewListNamespacesHandler(lister)
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
-		r.Header.Add(userHeader, "myuser")
 
 		// when
-		handler.ServeHTTP(w, r)
+		handler.ServeHTTP(w, request)
 
 		// then
 		Expect(w.Result()).NotTo(BeNil())
 		Expect(w.Result().StatusCode).To(Equal(expectedResponseStatus))
 		// Expect(w.Result().Header.Get(HttpContentType)).To(Equal(HttpContentTypeApplication))
-		wb, err := io.ReadAll(w.Result().Body)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(wb).To(BeEquivalentTo(expectedErr.Error()))
+		Expect(io.ReadAll(w.Result().Body)).To(BeEquivalentTo(expectedErr.Error()))
 	},
 		Entry("unhandled error", errors.New("unhandled error"), http.StatusInternalServerError),
 		Entry("handled error", kerrors.NewTimeoutError("timed-out", 200), http.StatusGatewayTimeout),
