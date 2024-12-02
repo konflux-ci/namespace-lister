@@ -1,4 +1,4 @@
-KIND_CLUSTER_NAME =? namespace-lister-acceptance-tests
+KIND_CLUSTER_NAME ?= namespace-lister-acceptance-tests
 IMG ?= namespace-lister:latest
 
 ROOT_DIR ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -10,6 +10,13 @@ TMPDIR ?= $(ROOT_DIR)/tmp
 GO ?= go
 
 GOLANG_CI ?= $(GO) run -modfile $(shell dirname $(ROOT_DIR))/hack/tools/golang-ci/go.mod github.com/golangci/golangci-lint/cmd/golangci-lint
+
+KUBECONFIG ?=
+KUBECTL ?= kubectl
+KUBECTL_X := KUBECONFIG=$(KUBECONFIG) $(KUBECTL)
+KIND ?= kind
+KIND_X := KUBECONFIG=$(KUBECONFIG) $(KIND)
+KUBECONFIG_ATSA ?= /tmp/namespace-lister-acceptance-tests-user.kcfg
 
 ## Local Folders
 $(LOCALBIN):
@@ -29,33 +36,33 @@ image-build:
 
 .PHONY: kind-create
 kind-create:
-	kind create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml
+	$(KIND_X) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml
 
-.PHONY: load-image
-load-image:
-	kind load docker-image --name "$(KIND_CLUSTER_NAME)" "$(IMG)"
+.PHONY: kind-load-image
+kind-load-image:
+	$(KIND_X) load docker-image --name "$(KIND_CLUSTER_NAME)" "$(IMG)"
 
 .PHONY: update-namespace-lister
 update-namespace-lister: image-build load-image
-	kubectl rollout restart deployment namespace-lister -n namespace-lister
-	kubectl rollout status deployment -n namespace-lister namespace-lister
+	$(KUBECTL_X) rollout restart deployment namespace-lister -n namespace-lister
+	$(KUBECTL_X) rollout status deployment -n namespace-lister namespace-lister
 
 .PHONY: deploy-test-infra
 deploy-test-infra:
-	kubectl apply -k $(ROOT_DIR)/dependencies/cert-manager/
+	$(KUBECTL_X) apply -k $(ROOT_DIR)/dependencies/cert-manager/
 	sleep 5
-	kubectl wait --for=condition=Ready --timeout=300s -l 'app.kubernetes.io/instance=cert-manager' -n cert-manager pod
-	kubectl apply -k $(ROOT_DIR)/dependencies/cluster-issuer/
+	$(KUBECTL_X) wait --for=condition=Ready --timeout=300s -l 'app.kubernetes.io/instance=cert-manager' -n cert-manager pod
+	$(KUBECTL_X) apply -k $(ROOT_DIR)/dependencies/cluster-issuer/
 
 .PHONY: create-test-identity
 create-test-identity:
-	kubectl apply -k $(ROOT_DIR)/config/acceptance-tests/
+	$(KUBECTL_X) apply -k $(ROOT_DIR)/config/acceptance-tests/
 
 .PHONY: export-test-identity-kubeconfig
 export-test-identity-kubeconfig:
-	kind get kubeconfig --name $(KIND_CLUSTER_NAME) | \
-		yq '.users[0].user={"token": "'$$(kubectl get secret acceptance-tests-user -n acceptance-tests -o jsonpath='{.data.token}' | base64 -d )'"}' >| \
-		/tmp/namespace-lister-acceptance-tests-user.kcfg
+	$(KIND_X) get kubeconfig --name $(KIND_CLUSTER_NAME) | \
+		yq '.users[0].user={"token": "'$$($(KUBECTL_X) get secret acceptance-tests-user -n acceptance-tests -o jsonpath='{.data.token}' | base64 -d )'"}' >| \
+		$(KUBECONFIG_ATSA)
 
 .PHONY: vet
 vet:
@@ -63,5 +70,5 @@ vet:
 
 .PHONY: clean
 clean:
-	kubectl delete namespace -l 'namespace-lister/scope=acceptance-tests'
+	$(KUBECTL_X) delete namespace -l 'namespace-lister/scope=acceptance-tests'
 
