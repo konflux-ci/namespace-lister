@@ -48,20 +48,6 @@ subjects:
   name: user
 ```
 
-## Try
-
-The easiest way of trying this component locally is using `make -C acceptance prepare`.
-This command will build the image, create the Kind cluster, load the image in it, and deploy all needed components. 
-
-You will find a valid `kubeconfig` that you can use in `/tmp/namespace-lister-acceptance-tests-user.kcfg`.
-To access the namespace-lister you need to target the url `https://localhost:10443` and skip TLS verification.
-
-```
-KUBECONFIG=/tmp/namespace-lister-acceptance-tests-user.kcfg kubectl get namespaces --server=https://localhost:10443 --insecure-skip-tls-verify
-```
-
-Take a look at the [Tests section](#tests) for more info.
-
 ## Tests
 
 Acceptance tests are implemented in the [acceptance folder](./acceptance/).
@@ -69,15 +55,12 @@ Acceptance tests are implemented in the [acceptance folder](./acceptance/).
 Behavior-Driven Development is enforced through [godog](https://github.com/cucumber/godog).
 You can find the specification of the implemented Features at in the [acceptance/features folder](./acceptance/features/).
 
-They rely on [kind](https://kind.sigs.k8s.io/) and can be executed by just running the following commands:
+## Try
 
-```bash
-make -C acceptance prepare # required just the first time
-make -C acceptance test
-```
+The easiest way to try this component locally is by using the `make prepare` target in `acceptance/test/dumb-proxy` or `acceptance/test/smart-proxy`.
+This command will build the image, create the Kind cluster, load the image in it, and deploy all needed components.
 
-* `prepare` will build the image, create the Kind cluster, load the image in it, and deploy all needed components.
-* `test` will run the tests on the provisioned infrastructure
+Please take a look at the [Acceptance Tests README](./acceptance/README.md) for more information on the two setups and how to access the namespace-lister once deployed.
 
 ### Proxy
 
