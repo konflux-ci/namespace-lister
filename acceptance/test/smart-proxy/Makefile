@@ -1,9 +1,9 @@
 CWD ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOT_DIR := $(CWD)/../..
-TMPDIR := $(CWD)/tmp
+OUT_DIR := $(CWD)/out
 KIND_CLUSTER_NAME := namespace-lister-smart-proxy
-KUBECONFIG_ATSA := $(TMPDIR)/namespace-lister-acceptance-tests-user.kcfg
-KUBECONFIG_ADMIN := $(TMPDIR)/namespace-lister-admin.kcfg
+KUBECONFIG_ATSA := $(OUT_DIR)/namespace-lister-acceptance-tests-user.kcfg
+KUBECONFIG_ADMIN := $(OUT_DIR)/namespace-lister-admin.kcfg
 KONFLUX_ADDRESS := https://localhost:11443
 
 include ../../make/*.mk
@@ -19,11 +19,11 @@ deploy-test-proxy:
 	$(KUBECTL) apply -k ./config/proxy-auth/
 
 .PHONY: deploy-namespace-lister
-deploy-namespace-lister: $(TMPDIR)
-	-rm -r $(TMPDIR)/config
-	mkdir -p $(TMPDIR)/config
+deploy-namespace-lister: $(OUT_DIR)
+	-rm -r $(OUT_DIR)/config
+	mkdir -p $(OUT_DIR)/config
 	( \
-		cd $(TMPDIR)/config && \
+		cd $(OUT_DIR)/config && \
 			kustomize init && \
 			kustomize edit add base "../../../../../config" && \
 			cp "$(ROOT_DIR)/../config/patches/with-header-auth.yaml" . && \

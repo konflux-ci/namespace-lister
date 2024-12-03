@@ -4,8 +4,7 @@ IMG ?= namespace-lister:latest
 ROOT_DIR ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 LOCALBIN ?= $(ROOT_DIR)/bin
 
-OUTDIR ?= $(ROOT_DIR)/out
-TMPDIR ?= $(ROOT_DIR)/tmp
+OUT_DIR ?= $(ROOT_DIR)/out
 
 GO ?= go
 
@@ -18,10 +17,8 @@ KUBECONFIG_ATSA ?= /tmp/namespace-lister-acceptance-tests-user.kcfg
 ## Local Folders
 $(LOCALBIN):
 	mkdir $(LOCALBIN)
-$(OUTDIR):
-	@mkdir $(OUTDIR)
-$(TMPDIR):
-	@mkdir $(TMPDIR)
+$(OUT_DIR):
+	@mkdir $(OUT_DIR)
 
 .PHONY: lint
 lint: ## Run go linter.
