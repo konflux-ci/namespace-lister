@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	namespacelister "github.com/konflux-ci/namespace-lister"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	namespacelister "github.com/konflux-ci/namespace-lister"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,9 +29,9 @@ func (m NamespaceListerMock) ListNamespaces(ctx context.Context, username string
 var _ = Describe("HttpHandlerList", func() {
 	var request *http.Request
 
-	BeforeEach(func() {
+	BeforeEach(func(tctx context.Context) {
 		var err error
-		ctx := context.WithValue(context.TODO(), namespacelister.ContextKeyUserDetails,
+		ctx := context.WithValue(tctx, namespacelister.ContextKeyUserDetails,
 			&authenticator.Response{
 				User: &user.DefaultInfo{
 					Name: "myuser",

@@ -17,9 +17,11 @@ import (
 
 var _ = Describe("Namespacelister", func() {
 
-	var (
-		ctx = context.TODO()
-	)
+	var ctx context.Context
+
+	BeforeEach(func(tctx context.Context) {
+		ctx = tctx
+	})
 
 	DescribeTable("when listing namespaces", func(
 		nn corev1.NamespaceList,
