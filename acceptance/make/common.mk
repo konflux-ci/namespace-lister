@@ -34,7 +34,8 @@ kind-create:
 
 .PHONY: kind-load-image
 kind-load-image:
-	$(KIND) load docker-image --name "$(KIND_CLUSTER_NAME)" "$(IMG)"
+	$(IMAGE_BUILDER) save $(IMG) --quiet | \
+		$(KIND) load image-archive --name $(KIND_CLUSTER_NAME) /dev/stdin
 
 .PHONY: update-namespace-lister
 update-namespace-lister: image-build load-image
