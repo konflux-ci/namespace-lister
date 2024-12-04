@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"time"
@@ -36,24 +37,39 @@ func (a *Authenticator) AuthenticateRequest(req *http.Request) (*authenticator.R
 	return a.next.AuthenticateRequest(req)
 }
 
-func New(cfg *rest.Config) (authenticator.Request, error) {
-	ar, _, err := NewTokenReviewAuthenticator(cfg)
+type AuthenticatorOptions struct {
+	Client rest.Interface
+	Config *rest.Config
+	Header string
+}
+
+func NewAuthenticator(opts AuthenticatorOptions) (authenticator.Request, error) {
+	ar, _, err := newTokenReviewAuthenticatorWithOpts(&opts)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Authenticator{
-		usernameHeader: getUsernameHeaderFromEnv(),
+		usernameHeader: opts.Header,
 		next:           ar,
 	}, nil
 }
 
-func NewTokenReviewAuthenticator(cfg *rest.Config) (authenticator.Request, *spec.SecurityDefinitions, error) {
-	cfg = rest.CopyConfig(cfg)
+func NewTokenReviewAuthenticatorWithClient(c rest.Interface) (authenticator.Request, *spec.SecurityDefinitions, error) {
+	tokenAccessReviewClient := authenticationv1.New(c)
+	return newTokenReviewAuthenticator(tokenAccessReviewClient)
+}
 
+func NewTokenReviewAuthenticatorWithConfig(cfg *rest.Config) (authenticator.Request, *spec.SecurityDefinitions, error) {
+	cfg = rest.CopyConfig(cfg)
+	tokenAccessReviewClient := authenticationv1.NewForConfigOrDie(cfg)
+	return newTokenReviewAuthenticator(tokenAccessReviewClient)
+}
+
+func newTokenReviewAuthenticator(authenticationClient *authenticationv1.AuthenticationV1Client) (authenticator.Request, *spec.SecurityDefinitions, error) {
 	authCfg := authenticatorfactory.DelegatingAuthenticatorConfig{
 		Anonymous:                &apiserver.AnonymousAuthConfig{Enabled: false},
-		TokenAccessReviewClient:  authenticationv1.NewForConfigOrDie(cfg),
+		TokenAccessReviewClient:  authenticationClient,
 		TokenAccessReviewTimeout: 1 * time.Minute,
 		WebhookRetryBackoff:      &wait.Backoff{Duration: 2 * time.Second, Cap: 2 * time.Minute, Steps: 100, Factor: 2, Jitter: 2},
 		CacheTTL:                 5 * time.Minute,
@@ -61,6 +77,17 @@ func NewTokenReviewAuthenticator(cfg *rest.Config) (authenticator.Request, *spec
 	return authCfg.New()
 }
 
-func getUsernameHeaderFromEnv() string {
+func newTokenReviewAuthenticatorWithOpts(opts *AuthenticatorOptions) (authenticator.Request, *spec.SecurityDefinitions, error) {
+	switch {
+	case opts.Client != nil:
+		return NewTokenReviewAuthenticatorWithClient(opts.Client)
+	case opts.Config != nil:
+		return NewTokenReviewAuthenticatorWithConfig(opts.Config)
+	default:
+		return nil, nil, errors.New("one among client and config is required to build the TokenRevierAuthenticator")
+	}
+}
+
+func GetUsernameHeaderFromEnv() string {
 	return os.Getenv(EnvUsernameHeader)
 }

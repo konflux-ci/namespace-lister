@@ -28,7 +28,10 @@ func run(l *slog.Logger) error {
 	cfg := ctrl.GetConfigOrDie()
 
 	// build the request authenticator
-	ar, err := New(cfg)
+	ar, err := NewAuthenticator(AuthenticatorOptions{
+		Config: cfg,
+		Header: GetUsernameHeaderFromEnv(),
+	})
 	if err != nil {
 		return err
 	}
