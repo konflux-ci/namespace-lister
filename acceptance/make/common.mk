@@ -44,8 +44,10 @@ update-namespace-lister: image-build load-image
 .PHONY: deploy-test-infra
 deploy-test-infra:
 	$(KUBECTL) apply -k $(ROOT_DIR)/dependencies/cert-manager/
-	sleep 5
-	$(KUBECTL) wait --for=condition=Ready --timeout=300s -l 'app.kubernetes.io/instance=cert-manager' -n cert-manager pod
+	$(KUBECTL) rollout status \
+		--timeout=300s \
+		-l 'app.kubernetes.io/instance=cert-manager' \
+		-n cert-manager deployment
 	$(KUBECTL) apply -k $(ROOT_DIR)/dependencies/cluster-issuer/
 
 .PHONY: create-test-identity
