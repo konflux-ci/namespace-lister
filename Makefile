@@ -1,4 +1,4 @@
-ROOT_DIR := $(realpath $(firstword $(MAKEFILE_LIST)))
+ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 LOCALBIN := $(ROOT_DIR)/bin
 
 OUTDIR := $(ROOT_DIR)/out
@@ -51,3 +51,12 @@ test: ## Run go test against code.
 .PHONY: image-build
 image-build:
 	$(IMAGE_BUILDER) build -t "$(IMG)" .
+
+.PHONY: generate-code
+generate-code: mockgen  ## Run go generate on the project.
+	@echo $(GO) generate ./...
+	@PATH=$(LOCALBIN):${PATH} $(GO) generate ./...
+
+.PHONY: mockgen
+mockgen: $(LOCALBIN) ## Install mockgen locally.
+	$(GO) build -modfile $(ROOT_DIR)/hack/tools/mockgen/go.mod -o $(LOCALBIN)/mockgen go.uber.org/mock/mockgen
