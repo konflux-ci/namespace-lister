@@ -20,7 +20,7 @@ var _ = Describe("Namespacelister", func() {
 	var ctx context.Context
 
 	BeforeEach(func(tctx context.Context) {
-		ctx = tctx
+		ctx = tctx //nolint:fatcontext
 	})
 
 	DescribeTable("when listing namespaces", func(
