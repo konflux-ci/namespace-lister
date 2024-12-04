@@ -5,7 +5,7 @@ OUTDIR := $(ROOT_DIR)/out
 
 GO ?= go
 
-GOLANG_CI ?= $(GO) run -modfile $(shell dirname $(ROOT_DIR))/hack/tools/golang-ci/go.mod github.com/golangci/golangci-lint/cmd/golangci-lint
+GOLANG_CI ?= $(GO) run -modfile $(ROOT_DIR)/hack/tools/golang-ci/go.mod github.com/golangci/golangci-lint/cmd/golangci-lint
 
 IMG ?= namespace-lister:latest
 IMAGE_BUILDER ?= docker
