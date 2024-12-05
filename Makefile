@@ -1,7 +1,7 @@
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 LOCALBIN := $(ROOT_DIR)/bin
 
-OUTDIR := $(ROOT_DIR)/out
+OUT_DIR := $(ROOT_DIR)/out
 
 GO ?= go
 
@@ -13,13 +13,13 @@ IMAGE_BUILDER ?= docker
 ## Local Folders
 $(LOCALBIN):
 	mkdir $(LOCALBIN)
-$(OUTDIR):
-	@mkdir $(OUTDIR)
+$(OUT_DIR):
+	@mkdir $(OUT_DIR)
 
 .PHONY: clean
 clean: ## Delete local folders.
 	@-rm -r $(LOCALBIN)
-	@-rm -r $(OUTDIR)
+	@-rm -r $(OUT_DIR)
 
 .PHONY: lint
 lint: lint-go lint-yaml ## Run all linters.
