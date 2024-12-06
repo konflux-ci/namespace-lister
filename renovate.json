@@ -1,0 +1,13 @@
+{
+    "extends": [
+        "github>konflux-ci/mintmaker//config/renovate/renovate.json"
+    ],
+    "enabledManagers": [
+        "docker",
+        "go",
+        "kustomize",
+    ],
+    "go": {
+        "pinDigests": false
+    },
+}

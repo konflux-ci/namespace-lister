@@ -9,3 +9,8 @@ configMapGenerator:
 - name: namespace-lister-proxy-auth
   files:
   - nginx.conf
+images:
+- name: registry.access.redhat.com/ubi9/ubi
+  digest: sha256:66233eebd72bb5baa25190d4f55e1dc3fff3a9b77186c1f91a0abdb274452072
+- name: openresty/openresty
+  newTag: 1.25.3.1-0-jammy
