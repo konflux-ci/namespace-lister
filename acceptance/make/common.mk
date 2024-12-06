@@ -34,7 +34,7 @@ kind-create:
 
 .PHONY: kind-load-image
 kind-load-image:
-	$(IMAGE_BUILDER) save $(IMG) --quiet | \
+	$(IMAGE_BUILDER) save $(IMG) | \
 		$(KIND) load image-archive --name $(KIND_CLUSTER_NAME) /dev/stdin
 
 .PHONY: update-namespace-lister
