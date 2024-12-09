@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   unit-tests:
-    name: Run acceptance tests
+    name: Run unit tests
     runs-on: ubuntu-24.04
 
     steps:
@@ -25,6 +25,37 @@ jobs:
 
       - name: Determine golang-ci version
         run: make test
+
+  acceptance:
+    name: Run acceptance tests
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - proxy: dumb-proxy
+          - proxy: smart-proxy
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        env:
+          IMAGE_BUILDER: docker
+          IMG: namespace-lister:pr-${{ github.event.pull_request.number }}
+        run: |
+          echo "##[group] Preparing environment"
+            make -C "acceptance/test/${{ matrix.proxy }}" prepare
+          echo "##[endgroup]"
+          echo "##[group] Running tests"
+            make -C "acceptance/test/${{ matrix.proxy }}" test
+          echo "##[endgroup]"
 
   lint-go:
     name: Lint code
