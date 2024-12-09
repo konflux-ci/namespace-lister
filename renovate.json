@@ -5,9 +5,9 @@
     "enabledManagers": [
         "docker",
         "go",
-        "kustomize",
+        "kustomize"
     ],
     "go": {
         "pinDigests": false
-    },
+    }
 }
