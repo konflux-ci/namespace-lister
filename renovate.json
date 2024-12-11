@@ -1,24 +1,11 @@
 {
-    "extends": [
-        "github>konflux-ci/mintmaker//config/renovate/renovate.json"
-    ],
-    "enabledManagers": [
-        "dockerfile",
-        "gomod",
-        "tekton",
-        "kubernetes",
-        "kustomize",
-        "tekton"
-    ],
     "gomod": {
+        "enabled": true,
         "postUpdateOptions": ["gomodTidy"]
     },
     "kubernetes": {
         "fileMatch": [
             ".*.ya?ml$",
         ],
-        "schedule": [
-            "after 5am on monday"
-        ]
     },
 }
