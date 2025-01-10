@@ -188,6 +188,18 @@ spec:
         workspace: git-auth
       - name: netrc
         workspace: netrc
+    - name: unit-tests
+      params:
+      - name: package
+        value: github.com/konflux-ci/namespace-lister
+      - name: packages
+        value: ./...
+      - name: version
+        value: "1.22"
+      taskRef:
+        name: golang-test
+      runAfter:
+      - prefetch-dependencies
     - name: build-container
       params:
       - name: IMAGE
