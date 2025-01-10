@@ -1,5 +1,6 @@
 KIND_CLUSTER_NAME ?= namespace-lister-acceptance-tests
 IMG ?= namespace-lister:latest
+IMAGE_BUILDER ?= docker
 
 ROOT_DIR ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 LOCALBIN ?= $(ROOT_DIR)/bin
