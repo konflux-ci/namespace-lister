@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -21,8 +24,32 @@ func main() {
 	}
 }
 
+func loadTLSCert(l *slog.Logger, certPath, keyPath string) func(*tls.Config) {
+	getCertificate := func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+		if err != nil {
+			l.Error("Unable to load TLS certificates", "error", err)
+			return nil, fmt.Errorf("Unable to load TLS certificates: %w", err)
+		}
+
+		return &cert, err
+	}
+
+	return func(config *tls.Config) {
+		config.GetCertificate = getCertificate
+	}
+}
+
 func run(l *slog.Logger) error {
 	log.SetLogger(logr.FromSlogHandler(l.Handler()))
+
+	var enableTLS bool
+	var tlsCertificatePath string
+	var tlsCertificateKeyPath string
+	flag.BoolVar(&enableTLS, "enable-tls", true, "Toggle TLS enablement.")
+	flag.StringVar(&tlsCertificatePath, "cert-path", "", "Path to TLS certificate store.")
+	flag.StringVar(&tlsCertificateKeyPath, "key-path", "", "Path to TLS private key.")
+	flag.Parse()
 
 	// get config
 	cfg := ctrl.GetConfigOrDie()
@@ -56,6 +83,10 @@ func run(l *slog.Logger) error {
 	// build http server
 	l.Info("building server")
 	s := NewServer(l, ar, nsl)
+
+	// configure TLS
+	s.WithTLS(enableTLS).
+		WithTLSOpts(loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath))
 
 	// start the server
 	return s.Start(ctx)
