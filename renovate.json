@@ -18,9 +18,6 @@
     "pinDigests": false
   },
   "dockerfile": {
-    "fileMatch": [
-      "(^|/|\\.)([Dd]ocker|[Cc]ontainer)file$",
-      "(^|/)([Dd]ocker|[Cc]ontainer)file[^/]*$"
-    ]
+    "enabled": true
   }
 }
