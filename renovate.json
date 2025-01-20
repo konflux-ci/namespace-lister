@@ -1,11 +1,23 @@
 {
-    "gomod": {
-        "enabled": true,
-        "postUpdateOptions": ["gomodTidy"]
-    },
-    "kubernetes": {
-        "fileMatch": [
-            "\\.ya?ml$",
-        ],
-    },
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "gomod": {
+    "enabled": true,
+    "postUpdateOptions": [
+      "gomodTidy"
+    ]
+  },
+  "kubernetes": {
+    "fileMatch": [
+      "^config/.*\\.yaml$"
+    ]
+  },
+  "kustomize": {
+    "fileMatch": [
+      "^/config/kustomization\\.ya?ml$"
+    ],
+    "pinDigests": false
+  },
+  "dockerfile": {
+    "enabled": true
+  }
 }
