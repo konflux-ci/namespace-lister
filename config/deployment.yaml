@@ -19,7 +19,9 @@ spec:
       #   runAsNonRoot: true
       serviceAccountName: namespace-lister
       containers:
-      - image: namespace-lister:latest
+      - args:
+        - -enable-tls=false
+        image: namespace-lister:latest
         name: namespace-lister
         imagePullPolicy: IfNotPresent
         env:

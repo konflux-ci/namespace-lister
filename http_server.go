@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,6 +17,8 @@ const (
 
 type NamespaceListerServer struct {
 	*http.Server
+	useTLS  bool
+	tlsOpts []func(*tls.Config)
 }
 
 func addInjectLoggerMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
@@ -77,6 +80,16 @@ func NewServer(l *slog.Logger, ar authenticator.Request, lister NamespaceLister)
 	}
 }
 
+func (s *NamespaceListerServer) WithTLS(enableTLS bool) *NamespaceListerServer {
+	s.useTLS = enableTLS
+	return s
+}
+
+func (s *NamespaceListerServer) WithTLSOpts(tlsOpts ...func(*tls.Config)) *NamespaceListerServer {
+	s.tlsOpts = tlsOpts
+	return s
+}
+
 func (s *NamespaceListerServer) Start(ctx context.Context) error {
 	// HTTP Server graceful shutdown
 	go func() {
@@ -91,6 +104,17 @@ func (s *NamespaceListerServer) Start(ctx context.Context) error {
 			os.Exit(1)
 		}
 	}()
+
+	// setup and serve over TLS if configured
+	if s.useTLS {
+		s.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		for _, fun := range s.tlsOpts {
+			fun(s.TLSConfig)
+		}
+		return s.ListenAndServeTLS("", "")
+	}
 
 	// start server
 	return s.ListenAndServe()
