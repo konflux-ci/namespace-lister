@@ -20,7 +20,9 @@ spec:
       serviceAccountName: namespace-lister
       containers:
       - args:
-        - -enable-tls=false
+        - -enable-tls
+        - -cert-path=/var/tls/tls.crt
+        - -key-path=/var/tls/tls.key
         image: namespace-lister:latest
         name: namespace-lister
         imagePullPolicy: IfNotPresent
@@ -45,4 +47,12 @@ spec:
           capabilities:
             drop:
             - "ALL"
+        volumeMounts:
+        - name: tls
+          mountPath: /var/tls
+          readOnly: true
       terminationGracePeriodSeconds: 60
+      volumes:
+      - name: tls
+        secret:
+          secretName: namespace-lister-cert
