@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
@@ -28,9 +29,20 @@ func mergeTransformFunc(ff ...toolscache.TransformFunc) toolscache.TransformFunc
 	}
 }
 
+func trimAnnotations() toolscache.TransformFunc {
+	return func(in interface{}) (interface{}, error) {
+		if obj, err := meta.Accessor(in); err == nil && obj.GetAnnotations() != nil {
+			obj.SetAnnotations(nil)
+		}
+
+		return in, nil
+	}
+}
+
 func trimRole() toolscache.TransformFunc {
 	return mergeTransformFunc(
 		cache.TransformStripManagedFields(),
+		trimAnnotations(),
 		func(i interface{}) (interface{}, error) {
 			r, ok := i.(*rbacv1.Role)
 			if !ok {
@@ -49,6 +61,7 @@ func trimRole() toolscache.TransformFunc {
 func trimClusterRole() toolscache.TransformFunc {
 	return mergeTransformFunc(
 		cache.TransformStripManagedFields(),
+		trimAnnotations(),
 		func(i interface{}) (interface{}, error) {
 			cr, ok := i.(*rbacv1.ClusterRole)
 			if !ok {
@@ -103,16 +116,25 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 		Scheme: s,
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
-				Transform: cache.TransformStripManagedFields(),
+				Transform: mergeTransformFunc(
+					cache.TransformStripManagedFields(),
+					trimAnnotations(),
+				),
 			},
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
 			},
 			&rbacv1.ClusterRoleBinding{}: {
-				Transform: cache.TransformStripManagedFields(),
+				Transform: mergeTransformFunc(
+					cache.TransformStripManagedFields(),
+					trimAnnotations(),
+				),
 			},
 			&rbacv1.RoleBinding{}: {
-				Transform: cache.TransformStripManagedFields(),
+				Transform: mergeTransformFunc(
+					cache.TransformStripManagedFields(),
+					trimAnnotations(),
+				),
 			},
 			&rbacv1.Role{}: {
 				Transform: trimRole(),
