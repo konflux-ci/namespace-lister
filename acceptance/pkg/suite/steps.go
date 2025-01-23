@@ -55,6 +55,7 @@ func UserInfoHasAccessToNNamespaces(ctx context.Context, number int) (context.Co
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("run-%s-%d", run, i),
 				Labels: map[string]string{
+					"konflux.ci/type":           "user",
 					"namespace-lister/scope":    "acceptance-tests",
 					"namespace-lister/test-run": run,
 				},

@@ -9,7 +9,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -83,14 +85,11 @@ func trimClusterRole() toolscache.TransformFunc {
 }
 
 func filterNamespacesRelatedPolicyRules(pp []rbacv1.PolicyRule) []rbacv1.PolicyRule {
-	fr := []rbacv1.PolicyRule{}
+	var fr []rbacv1.PolicyRule
 	for _, r := range pp {
 		if slices.Contains(r.APIGroups, "") &&
 			slices.Contains(r.Resources, "namespaces") &&
-			slices.ContainsFunc(r.Verbs, func(v string) bool {
-				return v == "get" || v == "list"
-			}) {
-
+			slices.Contains(r.Verbs, "get") {
 			fr = append(fr, r)
 		}
 	}
@@ -105,6 +104,14 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 	if err := rbacv1.AddToScheme(s); err != nil {
 		return nil, err
 	}
+
+	// TODO(@filariow): make this dynamic
+	namespaceWithLabel, err := labels.NewRequirement("konflux.ci/type", selection.Equals, []string{"user"})
+	if err != nil {
+		return nil, err
+	}
+	namespaceLabelSelector := labels.NewSelector().Add(*namespaceWithLabel)
+
 	oo := []client.Object{
 		&corev1.Namespace{},
 		&rbacv1.RoleBinding{},
@@ -120,6 +127,7 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 					cache.TransformStripManagedFields(),
 					trimAnnotations(),
 				),
+				Label: namespaceLabelSelector,
 			},
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
