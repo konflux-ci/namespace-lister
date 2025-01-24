@@ -1,6 +1,6 @@
 module github.com/konflux-ci/namespace-lister
 
-go 1.22.2
+go 1.22.9
 
 require (
 	github.com/go-logr/logr v1.4.2
