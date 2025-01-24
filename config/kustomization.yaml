@@ -9,32 +9,31 @@ resources:
 namespace: namespace-lister
 replacements:
 - source:
-    kind: Service
-    name: namespace-lister
     fieldPath: metadata.name
-  targets:
-  - select:
-      group: cert-manager.io
-      version: v1
-      kind: Certificate
-      name: namespace-lister-cert
-    fieldPaths:
-    - spec.dnsNames.*
-    options:
-      delimiter: "."
-      index: 0
-- source:
     kind: Service
     name: namespace-lister
-    fieldPath: metadata.namespace
   targets:
-  - select:
-      group: cert-manager.io
-      version: v1
-      kind: Certificate
-      name: namespace-lister-cert
-    fieldPaths:
+  - fieldPaths:
     - spec.dnsNames.*
     options:
-      delimiter: "."
+      delimiter: .
+    select:
+      group: cert-manager.io
+      kind: Certificate
+      name: namespace-lister-cert
+      version: v1
+- source:
+    fieldPath: metadata.namespace
+    kind: Service
+    name: namespace-lister
+  targets:
+  - fieldPaths:
+    - spec.dnsNames.*
+    options:
+      delimiter: .
       index: 1
+    select:
+      group: cert-manager.io
+      kind: Certificate
+      name: namespace-lister-cert
+      version: v1
