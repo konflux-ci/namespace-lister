@@ -8,6 +8,8 @@ GO ?= go
 
 PERF_CLUSTER_PROVIDER ?= kwokctl
 PERF_CLUSTER_KUBECONFIG ?= /tmp/namespace-lister-perf-test
+PERF_CLUSTER_PROVIDER_FLAGS ?= --disable-qps-limits
+
 GOLANG_CI ?= $(GO) run -modfile $(ROOT_DIR)/hack/tools/golang-ci/go.mod github.com/golangci/golangci-lint/cmd/golangci-lint
 
 IMG ?= namespace-lister:latest
@@ -55,7 +57,7 @@ test: ## Run go test against code.
 test-perf: ## Run performance tests
 	-$(PERF_CLUSTER_PROVIDER) delete cluster --name namespace-lister-perf-test
 	KUBECONFIG=$(PERF_CLUSTER_KUBECONFIG) $(PERF_CLUSTER_PROVIDER) create cluster \
-		--name namespace-lister-perf-test  --disable-qps-limits=true
+		--name namespace-lister-perf-test $(PERF_CLUSTER_PROVIDER_FLAGS)
 	KUBECONFIG=$(PERF_CLUSTER_KUBECONFIG) $(GINKGO) --label-filter='perf'
 
 .PHONY: image-build
