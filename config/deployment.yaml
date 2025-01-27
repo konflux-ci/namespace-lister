@@ -31,6 +31,8 @@ spec:
           value: "0"
         # - name: AUTH_USERNAME_HEADER
         #   value: "X-User"
+        # - name: CACHE_NAMESPACE_LABELSELECTOR
+        #   value: 'konflux.dev/type=user'
         resources:
           limits:
             cpu: 500m

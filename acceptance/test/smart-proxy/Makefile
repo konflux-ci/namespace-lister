@@ -26,9 +26,16 @@ deploy-namespace-lister: $(OUT_DIR)
 		cd $(OUT_DIR)/config && \
 			kustomize init && \
 			kustomize edit add base "../../../../../config" && \
-			cp "$(ROOT_DIR)/../config/patches/with-header-auth.yaml" . && \
+			cp "$(ROOT_DIR)/../config/patches/with_header_auth.yaml" . && \
 			kustomize edit add patch \
-				--path "with-header-auth.yaml" \
+				--path "with_header_auth.yaml" \
+				--group "apps" \
+				--kind "Deployment" \
+				--name "namespace-lister" \
+				--version "v1" && \
+			cp "$(ROOT_DIR)/../config/patches/with_cachenamespacelabelselector.yaml" . && \
+			kustomize edit add patch \
+				--path "with_cachenamespacelabelselector.yaml" \
 				--group "apps" \
 				--kind "Deployment" \
 				--name "namespace-lister" \

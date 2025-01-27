@@ -71,7 +71,11 @@ func run(l *slog.Logger) error {
 
 	// create cache
 	l.Info("creating cache")
-	cache, err := BuildAndStartCache(ctx, cfg)
+	cacheCfg, err := NewCacheConfigFromEnv(cfg)
+	if err != nil {
+		return err
+	}
+	cache, err := BuildAndStartCache(ctx, cacheCfg)
 	if err != nil {
 		return err
 	}

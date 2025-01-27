@@ -28,6 +28,13 @@ deploy-namespace-lister: $(OUT_DIR)
 			kustomize edit add base "../../../../../config" && \
 			kustomize edit set namespace namespace-lister && \
 			kustomize edit set image "namespace-lister:latest=$(IMG)" && \
+			cp "$(ROOT_DIR)/../config/patches/with_cachenamespacelabelselector.yaml" . && \
+			kustomize edit add patch \
+				--path "with_cachenamespacelabelselector.yaml" \
+				--group "apps" \
+				--kind "Deployment" \
+				--name "namespace-lister" \
+				--version "v1" && \
 			kustomize build | $(KUBECTL) apply -f - ; \
 	)
 

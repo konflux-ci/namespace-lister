@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -96,7 +95,13 @@ func filterNamespacesRelatedPolicyRules(pp []rbacv1.PolicyRule) []rbacv1.PolicyR
 	return fr
 }
 
-func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, error) {
+type cacheConfig struct {
+	restConfig            *rest.Config
+	namespacesLabelSector labels.Selector
+}
+
+func BuildAndStartCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, error) {
+	// build scheme
 	s := runtime.NewScheme()
 	if err := corev1.AddToScheme(s); err != nil {
 		return nil, err
@@ -105,13 +110,7 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 		return nil, err
 	}
 
-	// TODO(@filariow): make this dynamic
-	namespaceWithLabel, err := labels.NewRequirement("konflux.ci/type", selection.Equals, []string{"user"})
-	if err != nil {
-		return nil, err
-	}
-	namespaceLabelSelector := labels.NewSelector().Add(*namespaceWithLabel)
-
+	// build per-object options
 	oo := []client.Object{
 		&corev1.Namespace{},
 		&rbacv1.RoleBinding{},
@@ -119,7 +118,7 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 		&rbacv1.ClusterRoleBinding{},
 		&rbacv1.Role{},
 	}
-	c, err := cache.New(cfg, cache.Options{
+	c, err := cache.New(cfg.restConfig, cache.Options{
 		Scheme: s,
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
@@ -127,7 +126,7 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 					cache.TransformStripManagedFields(),
 					trimAnnotations(),
 				),
-				Label: namespaceLabelSelector,
+				Label: cfg.namespacesLabelSector,
 			},
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
@@ -153,6 +152,7 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 		return nil, err
 	}
 
+	// get informers
 	for _, o := range oo {
 		_, err := c.GetInformer(ctx, o)
 		if err != nil {
@@ -160,11 +160,14 @@ func BuildAndStartCache(ctx context.Context, cfg *rest.Config) (cache.Cache, err
 		}
 	}
 
+	// start cache
 	go func() {
 		if err := c.Start(ctx); err != nil {
 			panic(err)
 		}
 	}()
+
+	// wait for cache sync
 	if !c.WaitForCacheSync(ctx) {
 		return nil, errors.New("error starting the cache")
 	}
