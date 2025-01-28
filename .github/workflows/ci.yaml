@@ -67,6 +67,41 @@ jobs:
             make -C "acceptance/test/${{ matrix.proxy }}" test
           echo "##[endgroup]"
 
+  go-tidy:
+    name: Tidy go mod
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Determine Go version
+        id: go_version
+        run: |
+          echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.go_version.version }}
+
+      - name: Ensure go.mod is tidy
+        env:
+          SHA_FILE: ${{ runner.temp }}/go_mod_shas.txt"
+        run: |
+          # generate sha512 for go mod files
+          sha512sum go.mod go.sum > "${SHA_FILE}"
+
+          # run go mod tidy
+          go mod tidy -v
+
+          # check files were left untouched
+          sha512sum -c "${SHA_FILE}"
+          if [ "$?" != 0 ]; then
+            printf "please run go mod tidy to tidy the go.mod\n\n%s\n" "${output}"
+            exit 1
+          fi
+
   lint-go:
     name: Lint code
     runs-on: ubuntu-24.04
