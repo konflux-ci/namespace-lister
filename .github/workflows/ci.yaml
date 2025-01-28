@@ -26,7 +26,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ steps.go_version.version }}
+          go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Determine golang-ci version
         run: make test
@@ -53,7 +53,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ steps.go_version.version }}
+          go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Run tests
         env:
@@ -83,7 +83,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ steps.go_version.version }}
+          go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Ensure go.mod is tidy
         env:
@@ -125,12 +125,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ steps.go_version.version }}
+          go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Lint with golang-ci
         uses: golangci/golangci-lint-action@v6
         with:
-          version: ${{ steps.golangci_version.version }}
+          version: ${{ steps.golangci_version.outputs.version }}
           args: --timeout=5m
 
   lint-yaml:
