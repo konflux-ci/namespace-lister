@@ -119,7 +119,8 @@ func BuildAndStartCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, err
 		&rbacv1.Role{},
 	}
 	c, err := cache.New(cfg.restConfig, cache.Options{
-		Scheme: s,
+		Scheme:                       s,
+		DefaultUnsafeDisableDeepCopy: ptr(true),
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
 				Transform: mergeTransformFunc(
@@ -173,4 +174,8 @@ func BuildAndStartCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, err
 	}
 
 	return c, nil
+}
+
+func ptr[T any](t T) *T {
+	return &t
 }
