@@ -12,12 +12,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	NamespaceTypeLabelKey       string = "konflux-ci.dev/type"
+	NamespaceTypeUserLabelValue string = "user"
 )
 
 var _ = Describe("Authorizing requests", func() {
@@ -31,22 +37,31 @@ var _ = Describe("Authorizing requests", func() {
 		// to print out the experiment's report and to include the experiment in any generated reports
 		AddReportEntry(experiment.Name, experiment)
 
+		// prepare scheme
 		s := runtime.NewScheme()
 		utilruntime.Must(corev1.AddToScheme(s))
 		utilruntime.Must(rbacv1.AddToScheme(s))
 
-		cfg := ctrl.GetConfigOrDie()
-		cfg.QPS = 500
-		cfg.Burst = 500
-		c, err := client.New(cfg, client.Options{Scheme: s})
+		// get kubernetes client config
+		restConfig := ctrl.GetConfigOrDie()
+		restConfig.QPS = 500
+		restConfig.Burst = 500
+		c, err := client.New(restConfig, client.Options{Scheme: s})
 		utilruntime.Must(err)
 
+		// create resources
 		username := "user"
 		err, ans, uns := createResources(ctx, c, username, 300, 800, 1200)
 		utilruntime.Must(err)
 
-		cache, err := BuildAndStartCache(ctx, cfg)
+		// create cache
+		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
 		utilruntime.Must(err)
+		cacheConfig := cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
+		cache, err := BuildAndStartCache(ctx, &cacheConfig)
+		utilruntime.Must(err)
+
+		// create authorizer and namespacelister
 		authzr := NewAuthorizer(ctx, cache)
 		nl := NewNamespaceLister(cache, authzr)
 
@@ -68,7 +83,7 @@ var _ = Describe("Authorizing requests", func() {
 		experiment.Sample(func(idx int) {
 			nsName := ans[0].GetName()
 			// measure how long it takes to allow a request and store the duration in a "authorization-allow" measurement
-			experiment.MeasureDuration("allow", func() {
+			experiment.MeasureDuration("authorization-allow", func() {
 				d, _, err := authzr.Authorize(ctx, authorizer.AttributesRecord{
 					User:            &user.DefaultInfo{Name: username},
 					Verb:            "get",
@@ -94,7 +109,7 @@ var _ = Describe("Authorizing requests", func() {
 			nsName := uns[0].GetName()
 			// measure how long it takes to produce a NoOpinion decision to a request
 			// and store the duration in a "authorization-no-opinion" measurement
-			experiment.MeasureDuration("authorization-no-opinion", func() {
+			experiment.MeasureDuration("authorization-noopinion", func() {
 				d, _, err := authzr.Authorize(ctx, authorizer.AttributesRecord{
 					User:            &user.DefaultInfo{Name: username},
 					Verb:            "get",
@@ -190,7 +205,7 @@ func namespaces(generateName string, quantity int) []client.Object {
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: generateName,
 				Labels: map[string]string{
-					"konflux.ci/type": "user",
+					NamespaceTypeLabelKey: NamespaceTypeUserLabelValue,
 				},
 			},
 		}
