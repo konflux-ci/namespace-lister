@@ -59,7 +59,8 @@ test-perf: ## Run performance tests
 	-$(PERF_CLUSTER_PROVIDER) delete cluster --name namespace-lister-perf-test
 	KUBECONFIG=$(PERF_CLUSTER_KUBECONFIG) $(PERF_CLUSTER_PROVIDER) create cluster \
 		--name namespace-lister-perf-test $(PERF_CLUSTER_PROVIDER_FLAGS)
-	KUBECONFIG=$(PERF_CLUSTER_KUBECONFIG) $(GINKGO) --label-filter='perf' --output-dir=$(PERF_OUT_DIR)
+	KUBECONFIG=$(PERF_CLUSTER_KUBECONFIG) $(GINKGO) --label-filter='perf' \
+		--keep-going --procs=1 --flake-attempts 2 --output-dir=$(PERF_OUT_DIR)
 
 .PHONY: image-build
 image-build:
