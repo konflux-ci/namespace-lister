@@ -15,13 +15,18 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Determine Go version
+        id: go_version
+        run: |
+          echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
-
-      - name: Checkout Git Repository
-        uses: actions/checkout@v4
+          go-version: ${{ steps.go_version.version }}
 
       - name: Determine golang-ci version
         run: make test
@@ -37,13 +42,18 @@ jobs:
           - proxy: smart-proxy
 
     steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v4
+
+      - name: Determine Go version
+        id: go_version
+        run: |
+          echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
-
-      - name: Checkout Git Repository
-        uses: actions/checkout@v4
+          go-version: ${{ steps.go_version.version }}
 
       - name: Run tests
         env:
@@ -62,13 +72,13 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-
       - name: Checkout Git Repository
         uses: actions/checkout@v4
+
+      - name: Determine Go version
+        id: go_version
+        run: |
+          echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
 
       - name: Determine golang-ci version
         id: golangci_version
@@ -76,6 +86,11 @@ jobs:
           echo "version=$(go mod edit -json hack/tools/golang-ci/go.mod | \
             jq '.Require | map(select(.Path == "github.com/golangci/golangci-lint"))[].Version')" \
             >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.go_version.version }}
 
       - name: Lint with golang-ci
         uses: golangci/golangci-lint-action@v6
