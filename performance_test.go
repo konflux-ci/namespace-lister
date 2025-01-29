@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"time"
 
@@ -15,9 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,8 +31,42 @@ const (
 	NamespaceTypeUserLabelValue string = "user"
 )
 
-var _ = Describe("Authorizing requests", func() {
-	BeforeEach(func() {})
+var _ = Describe("Authorizing requests", Serial, Ordered, func() {
+	username := "user"
+	var restConfig *rest.Config
+	var c client.Client
+	var ans []client.Object
+	var uns []client.Object
+	var cache cache.Cache
+
+	BeforeAll(func(ctx context.Context) {
+		var err error
+
+		// prepare scheme
+		s := runtime.NewScheme()
+		utilruntime.Must(corev1.AddToScheme(s))
+		utilruntime.Must(rbacv1.AddToScheme(s))
+
+		// get kubernetes client config
+		restConfig = ctrl.GetConfigOrDie()
+		restConfig.QPS = 500
+		restConfig.Burst = 500
+
+		// build kubernetes client
+		c, err = client.New(restConfig, client.Options{Scheme: s})
+		utilruntime.Must(err)
+
+		// create resources
+		err, ans, uns = createResources(ctx, c, username, 300, 800, 1200)
+		utilruntime.Must(err)
+
+		// create cache
+		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
+		utilruntime.Must(err)
+		cacheConfig := cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
+		cache, err = BuildAndStartCache(ctx, &cacheConfig)
+		utilruntime.Must(err)
+	})
 
 	It("efficiently authorize on a huge environment", Serial, Label("perf"), func(ctx context.Context) {
 		// new gomega experiment
@@ -37,45 +76,45 @@ var _ = Describe("Authorizing requests", func() {
 		// to print out the experiment's report and to include the experiment in any generated reports
 		AddReportEntry(experiment.Name, experiment)
 
-		// prepare scheme
-		s := runtime.NewScheme()
-		utilruntime.Must(corev1.AddToScheme(s))
-		utilruntime.Must(rbacv1.AddToScheme(s))
-
-		// get kubernetes client config
-		restConfig := ctrl.GetConfigOrDie()
-		restConfig.QPS = 500
-		restConfig.Burst = 500
-		c, err := client.New(restConfig, client.Options{Scheme: s})
-		utilruntime.Must(err)
-
-		// create resources
-		username := "user"
-		err, ans, uns := createResources(ctx, c, username, 300, 800, 1200)
-		utilruntime.Must(err)
-
-		// create cache
-		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
-		utilruntime.Must(err)
-		cacheConfig := cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
-		cache, err := BuildAndStartCache(ctx, &cacheConfig)
-		utilruntime.Must(err)
-
-		// create authorizer and namespacelister
+		// create authorizer, namespacelister, and handler
 		authzr := NewAuthorizer(ctx, cache)
 		nl := NewNamespaceLister(cache, authzr)
+		lnh := NewListNamespacesHandler(nl)
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
-			experiment.MeasureDuration("listing", func() {
-				nn, err := nl.ListNamespaces(ctx, username)
-				if err != nil {
-					panic(err)
-				}
-				if lnn := len(nn.Items); lnn != len(ans) {
-					panic(fmt.Errorf("expecting %d namespaces, received %d", len(ans), lnn))
-				}
+			rctx := context.WithValue(context.Background(), ContextKeyUserDetails, &authenticator.Response{
+				User: &user.DefaultInfo{
+					Name: username,
+				},
 			})
+			r := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(rctx)
+			w := httptest.NewRecorder()
+
+			// measure http Handler
+			experiment.MeasureDuration("http listing", func() {
+				lnh.ServeHTTP(w, r)
+			})
+		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
+		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
+
+		// we sample a function repeatedly to get a statistically significant set of measurements
+		experiment.Sample(func(idx int) {
+			var err error
+			var nn *corev1.NamespaceList
+
+			// measure ListNamespaces
+			experiment.MeasureDuration("internal listing", func() {
+				nn, err = nl.ListNamespaces(ctx, username)
+			})
+
+			// check results
+			if err != nil {
+				panic(err)
+			}
+			if lnn := len(nn.Items); lnn != len(ans) {
+				panic(fmt.Errorf("expecting %d namespaces, received %d", len(ans), lnn))
+			}
 		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
 		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 
@@ -83,24 +122,31 @@ var _ = Describe("Authorizing requests", func() {
 		experiment.Sample(func(idx int) {
 			nsName := ans[0].GetName()
 			// measure how long it takes to allow a request and store the duration in a "authorization-allow" measurement
+			var d authorizer.Decision
+			var err error
+			r := authorizer.AttributesRecord{
+				User:            &user.DefaultInfo{Name: username},
+				Verb:            "get",
+				Resource:        "namespaces",
+				APIGroup:        corev1.GroupName,
+				APIVersion:      corev1.SchemeGroupVersion.Version,
+				Name:            nsName,
+				Namespace:       nsName,
+				ResourceRequest: true,
+			}
+
+			// measure authorization
 			experiment.MeasureDuration("authorization-allow", func() {
-				d, _, err := authzr.Authorize(ctx, authorizer.AttributesRecord{
-					User:            &user.DefaultInfo{Name: username},
-					Verb:            "get",
-					Resource:        "namespaces",
-					APIGroup:        corev1.GroupName,
-					APIVersion:      corev1.SchemeGroupVersion.Version,
-					Name:            nsName,
-					Namespace:       nsName,
-					ResourceRequest: true,
-				})
-				if err != nil {
-					panic(err)
-				}
-				if d != authorizer.DecisionAllow {
-					panic(fmt.Sprintf("expected decision Allow, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
-				}
+				d, _, err = authzr.Authorize(ctx, r)
 			})
+
+			// check results
+			if err != nil {
+				panic(err)
+			}
+			if d != authorizer.DecisionAllow {
+				panic(fmt.Sprintf("expected decision Allow, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
+			}
 		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
 		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 
@@ -109,30 +155,37 @@ var _ = Describe("Authorizing requests", func() {
 			nsName := uns[0].GetName()
 			// measure how long it takes to produce a NoOpinion decision to a request
 			// and store the duration in a "authorization-no-opinion" measurement
+			var d authorizer.Decision
+			var err error
+			r := authorizer.AttributesRecord{
+				User:            &user.DefaultInfo{Name: username},
+				Verb:            "get",
+				Resource:        "namespaces",
+				APIGroup:        corev1.GroupName,
+				APIVersion:      corev1.SchemeGroupVersion.Version,
+				Name:            nsName,
+				Namespace:       nsName,
+				ResourceRequest: true,
+			}
+
+			// measure authorization
 			experiment.MeasureDuration("authorization-noopinion", func() {
-				d, _, err := authzr.Authorize(ctx, authorizer.AttributesRecord{
-					User:            &user.DefaultInfo{Name: username},
-					Verb:            "get",
-					Resource:        "namespaces",
-					APIGroup:        corev1.GroupName,
-					APIVersion:      corev1.SchemeGroupVersion.Version,
-					Name:            nsName,
-					Namespace:       nsName,
-					ResourceRequest: true,
-				})
-				if err != nil {
-					panic(err)
-				}
-				if d != authorizer.DecisionNoOpinion {
-					panic(fmt.Sprintf("expected decision NoOpinion, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
-				}
+				d, _, err = authzr.Authorize(ctx, r)
 			})
+
+			// check results
+			if err != nil {
+				panic(err)
+			}
+			if d != authorizer.DecisionNoOpinion {
+				panic(fmt.Sprintf("expected decision NoOpinion, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
+			}
 		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
 		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 
 		// we get the median listing duration from the experiment we just ran
-		repaginationStats := experiment.GetStats("listing")
-		medianDuration := repaginationStats.DurationFor(gmeasure.StatMedian)
+		httpListingStats := experiment.GetStats("http listing")
+		medianDuration := httpListingStats.DurationFor(gmeasure.StatMedian)
 
 		// and assert that it hasn't changed much from ~100ms
 		Expect(medianDuration).To(BeNumerically("~", 100*time.Millisecond, 70*time.Millisecond))
