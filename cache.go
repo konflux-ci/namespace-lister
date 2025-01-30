@@ -100,7 +100,7 @@ type cacheConfig struct {
 	namespacesLabelSector labels.Selector
 }
 
-func BuildAndStartCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, error) {
+func BuildAndStartResourcesCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, error) {
 	// build scheme
 	s := runtime.NewScheme()
 	if err := corev1.AddToScheme(s); err != nil {

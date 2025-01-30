@@ -1,0 +1,5 @@
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: CACHE_RESYNC_PERIOD
+    value: '10m'

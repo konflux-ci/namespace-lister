@@ -22,7 +22,6 @@ import (
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,7 +36,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 	var c client.Client
 	var ans []client.Object
 	var uns []client.Object
-	var cache cache.Cache
+	var cacheCfg *cacheConfig
 
 	BeforeAll(func(ctx context.Context) {
 		var err error
@@ -59,13 +58,13 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create resources
 		err, ans, uns = createResources(ctx, c, username, 300, 800, 1200)
 		utilruntime.Must(err)
+	})
 
+	BeforeEach(func(ctx context.Context) {
 		// create cache
 		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
 		utilruntime.Must(err)
-		cacheConfig := cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
-		cache, err = BuildAndStartCache(ctx, &cacheConfig)
-		utilruntime.Must(err)
+		cacheCfg = &cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
 	})
 
 	It("efficiently authorize on a huge environment", Serial, Label("perf"), func(ctx context.Context) {
@@ -76,7 +75,9 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// to print out the experiment's report and to include the experiment in any generated reports
 		AddReportEntry(experiment.Name, experiment)
 
-		// create authorizer, namespacelister, and handler
+		// create cache, authorizer, namespacelister, and handler
+		cache, err := BuildAndStartResourcesCache(ctx, cacheCfg)
+		utilruntime.Must(err)
 		authzr := NewAuthorizer(ctx, cache)
 		nl := NewNamespaceLister(cache, authzr)
 		lnh := NewListNamespacesHandler(nl)
@@ -189,6 +190,61 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 
 		// and assert that it hasn't changed much from ~100ms
 		Expect(medianDuration).To(BeNumerically("~", 100*time.Millisecond, 70*time.Millisecond))
+	})
+
+	It("efficiently authorize on a huge environment with cached accesses", Serial, Label("perf"), func(ctx context.Context) {
+		// new gomega experiment
+		experiment := gmeasure.NewExperiment("Authorizing Request")
+
+		// Register the experiment as a ReportEntry - this will cause Ginkgo's reporter infrastructure
+		// to print out the experiment's report and to include the experiment in any generated reports
+		AddReportEntry(experiment.Name, experiment)
+
+		// create cache, namespacelister, and handler
+		cache, err := BuildAndStartResourcesCache(ctx, cacheCfg)
+		utilruntime.Must(err)
+		c, err := buildAndStartAccessCache(ctx, cache)
+		utilruntime.Must(err)
+
+		nl := NewSubjectNamespacesLister(c)
+		lnh := NewListNamespacesHandler(nl)
+
+		// we sample a function repeatedly to get a statistically significant set of measurements
+		experiment.Sample(func(idx int) {
+			var err error
+			var nn *corev1.NamespaceList
+
+			// measure ListNamespaces
+			experiment.MeasureDuration("internal listing", func() {
+				nn, err = nl.ListNamespaces(ctx, username)
+			})
+
+			// check results
+			if err != nil {
+				panic(err)
+			}
+			if lnn := len(nn.Items); lnn != len(ans) {
+				panic(fmt.Errorf("expecting %d namespaces, received %d", len(ans), lnn))
+			}
+		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
+		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
+
+		// we sample a function repeatedly to get a statistically significant set of measurements
+		experiment.Sample(func(idx int) {
+			rctx := context.WithValue(context.Background(), ContextKeyUserDetails, &authenticator.Response{
+				User: &user.DefaultInfo{
+					Name: username,
+				},
+			})
+			r := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(rctx)
+			w := httptest.NewRecorder()
+
+			// measure http Handler
+			experiment.MeasureDuration("http listing", func() {
+				lnh.ServeHTTP(w, r)
+			})
+		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
+		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 	})
 })
 

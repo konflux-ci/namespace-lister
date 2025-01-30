@@ -11,7 +11,6 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -69,20 +68,26 @@ func run(l *slog.Logger) error {
 
 	ctx = setLoggerIntoContext(ctx, l)
 
-	// create cache
-	l.Info("creating cache")
+	// create resource cache
+	l.Info("creating resource cache")
 	cacheCfg, err := NewCacheConfigFromEnv(cfg)
 	if err != nil {
 		return err
 	}
-	cache, err := BuildAndStartCache(ctx, cacheCfg)
+	resourceCache, err := BuildAndStartResourcesCache(ctx, cacheCfg)
 	if err != nil {
 		return err
 	}
 
-	// create the authorizer and the namespace lister
-	auth := NewAuthorizer(ctx, cache)
-	nsl := NewNamespaceLister(cache, auth)
+	// create access cache
+	l.Info("creating access cache")
+	accessCache, err := buildAndStartAccessCache(ctx, resourceCache)
+	if err != nil {
+		return err
+	}
+
+	// create the namespace lister
+	nsl := NewSubjectNamespacesLister(accessCache)
 
 	// build http server
 	l.Info("building server")

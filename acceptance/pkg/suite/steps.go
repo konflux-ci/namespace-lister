@@ -3,7 +3,9 @@ package suite
 import (
 	"context"
 	"fmt"
+	"log"
 	"slices"
+	"time"
 
 	"github.com/cucumber/godog"
 
@@ -11,13 +13,14 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
 	arest "github.com/konflux-ci/namespace-lister/acceptance/pkg/rest"
 )
 
 func InjectSteps(ctx *godog.ScenarioContext) {
-	//read
+	// read
 	ctx.Step(`^ServiceAccount has access to a namespace$`,
 		func(ctx context.Context) (context.Context, error) { return UserInfoHasAccessToNNamespaces(ctx, 1) })
 	ctx.Step(`^User has access to a namespace$`,
@@ -92,49 +95,56 @@ func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (c
 		return ctx, err
 	}
 
-	ann := corev1.NamespaceList{}
-	if err := cli.List(ctx, &ann); err != nil {
-		return ctx, err
-	}
-
-	enn := tcontext.Namespaces(ctx)
-	if expected, actual := len(enn), len(ann.Items); expected != actual {
-		return ctx, fmt.Errorf("expected %d namespaces, actual %d", expected, actual)
-	}
-
-	for _, en := range enn {
-		if !slices.ContainsFunc(ann.Items, func(an corev1.Namespace) bool {
-			return en.Name == an.Name
-		}) {
-			return ctx, fmt.Errorf("expected namespace %s not found in actual namespace list: %v", en.Name, ann.Items)
+	return ctx, wait.PollUntilContextTimeout(ctx, 2*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		ann := corev1.NamespaceList{}
+		if err := cli.List(ctx, &ann); err != nil {
+			log.Printf("error listing namespaces: %v", err)
+			return false, nil
 		}
-	}
 
-	return ctx, nil
+		enn := tcontext.Namespaces(ctx)
+		if expected, actual := len(enn), len(ann.Items); expected != actual {
+			log.Printf("expected %d namespaces, actual %d", expected, actual)
+			return false, nil
+		}
+
+		for _, en := range enn {
+			if !slices.ContainsFunc(ann.Items, func(an corev1.Namespace) bool {
+				return en.Name == an.Name
+			}) {
+				log.Printf("expected namespace %s not found in actual namespace list: %v", en.Name, ann.Items)
+				return false, nil
+			}
+		}
+		return true, nil
+	})
 }
 
 func TheUserCanRetrieveTheNamespace(ctx context.Context) (context.Context, error) {
 	run := tcontext.RunId(ctx)
-
 	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
 	if err != nil {
 		return ctx, err
 	}
 
-	n := corev1.Namespace{}
-	k := types.NamespacedName{Name: fmt.Sprintf("run-%s-0", run)}
-	if err := cli.Get(ctx, k, &n); err != nil {
-		return ctx, err
-	}
+	return ctx, wait.PollUntilContextTimeout(ctx, 2*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		n := corev1.Namespace{}
+		k := types.NamespacedName{Name: fmt.Sprintf("run-%s-0", run)}
+		if err := cli.Get(ctx, k, &n); err != nil {
+			log.Printf("error getting namespace %v: %v", k, err)
+			return false, nil
+		}
 
-	enn := tcontext.Namespaces(ctx)
-	if expected, actual := 1, len(enn); expected != actual {
-		return ctx, fmt.Errorf("expected %d namespaces, actual %d: %v", expected, actual, enn)
-	}
+		enn := tcontext.Namespaces(ctx)
+		if expected, actual := 1, len(enn); expected != actual {
+			log.Printf("expected %d namespaces, actual %d: %v", expected, actual, enn)
+			return false, nil
+		}
 
-	if expected, actual := n.Name, enn[0].Name; actual != expected {
-		return ctx, fmt.Errorf("expected namespace %s, actual %s", expected, actual)
-	}
-
-	return ctx, nil
+		if expected, actual := n.Name, enn[0].Name; actual != expected {
+			log.Printf("expected namespace %s, actual %s", expected, actual)
+			return false, nil
+		}
+		return true, nil
+	})
 }
