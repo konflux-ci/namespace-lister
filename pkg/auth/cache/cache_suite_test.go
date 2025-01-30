@@ -8,6 +8,8 @@ import (
 )
 
 func TestCache(t *testing.T) {
+	t.Parallel()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Cache Suite")
 }
