@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -25,11 +26,8 @@ func NewSubjectNamespacesLister(subjectNamespacesLister SubjectNamespacesLister)
 }
 
 func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
-	nn := c.subjectNamespacesLister.List(rbacv1.Subject{
-		APIGroup: rbacv1.GroupName,
-		Kind:     "User",
-		Name:     username,
-	})
+	sub := c.parseUsername(username)
+	nn := c.subjectNamespacesLister.List(sub)
 
 	// list all namespaces
 	return &corev1.NamespaceList{
@@ -42,4 +40,21 @@ func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username st
 		},
 		Items: nn,
 	}, nil
+}
+
+func (c *subjectNamespaceLister) parseUsername(username string) rbacv1.Subject {
+	if strings.HasPrefix(username, "system:serviceaccount:") {
+		ss := strings.Split(username, ":")
+		return rbacv1.Subject{
+			Kind:      "ServiceAccount",
+			Name:      ss[3],
+			Namespace: ss[2],
+		}
+	}
+
+	return rbacv1.Subject{
+		APIGroup: rbacv1.GroupName,
+		Kind:     "User",
+		Name:     username,
+	}
 }
