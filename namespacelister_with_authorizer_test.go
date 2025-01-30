@@ -16,7 +16,6 @@ import (
 )
 
 var _ = Describe("Namespacelister", func() {
-
 	var ctx context.Context
 
 	BeforeEach(func(tctx context.Context) {
@@ -34,7 +33,7 @@ var _ = Describe("Namespacelister", func() {
 		// given
 		reader := fake.NewClientBuilder().WithLists(&nn, &cr, &crb, &r, &rb).Build()
 		authorizer := namespacelister.NewAuthorizer(ctx, reader)
-		nsl := namespacelister.NewNamespaceLister(reader, authorizer)
+		nsl := namespacelister.NewNamespaceListerWithAuthorizer(reader, authorizer)
 
 		// when
 		ann, err := nsl.ListNamespaces(ctx, "user")

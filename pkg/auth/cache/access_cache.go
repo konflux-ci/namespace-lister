@@ -8,17 +8,17 @@ import (
 )
 
 // stores data
-type AuthCache struct {
+type AccessCache struct {
 	data atomic.Pointer[map[rbacv1.Subject][]corev1.Namespace]
 }
 
-func NewAuthCache() *AuthCache {
-	return &AuthCache{
+func NewAccessCache() *AccessCache {
+	return &AccessCache{
 		data: atomic.Pointer[map[rbacv1.Subject][]corev1.Namespace]{},
 	}
 }
 
-func (c *AuthCache) List(subject rbacv1.Subject) []corev1.Namespace {
+func (c *AccessCache) List(subject rbacv1.Subject) []corev1.Namespace {
 	m := c.data.Load()
 	if m == nil {
 		return nil
@@ -26,6 +26,6 @@ func (c *AuthCache) List(subject rbacv1.Subject) []corev1.Namespace {
 	return (*m)[subject]
 }
 
-func (c *AuthCache) restock(data *map[rbacv1.Subject][]corev1.Namespace) {
+func (c *AccessCache) Restock(data *map[rbacv1.Subject][]corev1.Namespace) {
 	c.data.Store(data)
 }

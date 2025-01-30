@@ -76,10 +76,10 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		AddReportEntry(experiment.Name, experiment)
 
 		// create cache, authorizer, namespacelister, and handler
-		cache, err := BuildAndStartResourcesCache(ctx, cacheCfg)
+		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
 		authzr := NewAuthorizer(ctx, cache)
-		nl := NewNamespaceLister(cache, authzr)
+		nl := NewNamespaceListerWithAuthorizer(cache, authzr)
 		lnh := NewListNamespacesHandler(nl)
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
@@ -201,12 +201,12 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		AddReportEntry(experiment.Name, experiment)
 
 		// create cache, namespacelister, and handler
-		cache, err := BuildAndStartResourcesCache(ctx, cacheCfg)
+		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
 		c, err := buildAndStartAccessCache(ctx, cache)
 		utilruntime.Must(err)
 
-		nl := NewSubjectNamespacesLister(c)
+		nl := NewNamespaceListerForSubject(c)
 		lnh := NewListNamespacesHandler(nl)
 
 		// we sample a function repeatedly to get a statistically significant set of measurements

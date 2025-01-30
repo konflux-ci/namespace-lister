@@ -13,6 +13,8 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
+	v1 "k8s.io/api/core/v1"
+	v10 "k8s.io/api/rbac/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	rest "k8s.io/client-go/rest"
@@ -153,4 +155,42 @@ func (m *MockFakeInterface) Verb(verb string) *rest.Request {
 func (mr *MockFakeInterfaceMockRecorder) Verb(verb any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verb", reflect.TypeOf((*MockFakeInterface)(nil).Verb), verb)
+}
+
+// MockFakeSubjectNamespacesLister is a mock of FakeSubjectNamespacesLister interface.
+type MockFakeSubjectNamespacesLister struct {
+	ctrl     *gomock.Controller
+	recorder *MockFakeSubjectNamespacesListerMockRecorder
+	isgomock struct{}
+}
+
+// MockFakeSubjectNamespacesListerMockRecorder is the mock recorder for MockFakeSubjectNamespacesLister.
+type MockFakeSubjectNamespacesListerMockRecorder struct {
+	mock *MockFakeSubjectNamespacesLister
+}
+
+// NewMockFakeSubjectNamespacesLister creates a new mock instance.
+func NewMockFakeSubjectNamespacesLister(ctrl *gomock.Controller) *MockFakeSubjectNamespacesLister {
+	mock := &MockFakeSubjectNamespacesLister{ctrl: ctrl}
+	mock.recorder = &MockFakeSubjectNamespacesListerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockFakeSubjectNamespacesLister) EXPECT() *MockFakeSubjectNamespacesListerMockRecorder {
+	return m.recorder
+}
+
+// List mocks base method.
+func (m *MockFakeSubjectNamespacesLister) List(subject v10.Subject) []v1.Namespace {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", subject)
+	ret0, _ := ret[0].([]v1.Namespace)
+	return ret0
+}
+
+// List indicates an expected call of List.
+func (mr *MockFakeSubjectNamespacesListerMockRecorder) List(subject any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockFakeSubjectNamespacesLister)(nil).List), subject)
 }

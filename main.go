@@ -70,11 +70,11 @@ func run(l *slog.Logger) error {
 
 	// create resource cache
 	l.Info("creating resource cache")
-	cacheCfg, err := NewCacheConfigFromEnv(cfg)
+	cacheCfg, err := NewResourceCacheConfigFromEnv(cfg)
 	if err != nil {
 		return err
 	}
-	resourceCache, err := BuildAndStartResourcesCache(ctx, cacheCfg)
+	resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func run(l *slog.Logger) error {
 	}
 
 	// create the namespace lister
-	nsl := NewSubjectNamespacesLister(accessCache)
+	nsl := NewNamespaceListerForSubject(accessCache)
 
 	// build http server
 	l.Info("building server")

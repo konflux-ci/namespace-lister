@@ -23,7 +23,7 @@ type namespaceLister struct {
 	authorizer *rbac.RBACAuthorizer
 }
 
-func NewNamespaceLister(reader client.Reader, authorizer *rbac.RBACAuthorizer) NamespaceLister {
+func NewNamespaceListerWithAuthorizer(reader client.Reader, authorizer *rbac.RBACAuthorizer) NamespaceLister {
 	return &namespaceLister{
 		Reader:     reader,
 		authorizer: authorizer,

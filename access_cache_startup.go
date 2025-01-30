@@ -10,14 +10,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	toolscache "k8s.io/client-go/tools/cache"
+	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 	crcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func buildAndStartAccessCache(ctx context.Context, resourceCache crcache.Cache) (*authcache.SynchronizedCache, error) {
+func buildAndStartAccessCache(ctx context.Context, resourceCache crcache.Cache) (*authcache.SynchronizedAccessCache, error) {
 	aur := &CRAuthRetriever{resourceCache, ctx, getLoggerFromContext(ctx)}
-	synchCache := authcache.NewSynchronizedCache(
-		aur, aur, aur, aur,
+	sae := rbac.NewSubjectAccessEvaluator(aur, aur, aur, aur, "")
+	synchCache := authcache.NewSynchronizedAccessCache(
+		sae,
 		resourceCache, authcache.CacheSynchronizerOptions{
 			Logger:       getLoggerFromContext(ctx),
 			ResyncPeriod: getResyncPeriodFromEnvOrZero(ctx),

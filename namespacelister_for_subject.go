@@ -19,7 +19,7 @@ type subjectNamespaceLister struct {
 	subjectNamespacesLister SubjectNamespacesLister
 }
 
-func NewSubjectNamespacesLister(subjectNamespacesLister SubjectNamespacesLister) NamespaceLister {
+func NewNamespaceListerForSubject(subjectNamespacesLister SubjectNamespacesLister) NamespaceLister {
 	return &subjectNamespaceLister{
 		subjectNamespacesLister: subjectNamespacesLister,
 	}

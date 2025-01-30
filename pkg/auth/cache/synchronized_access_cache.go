@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
-	rbacregistryvalidation "k8s.io/kubernetes/pkg/registry/rbac/validation"
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,44 +18,35 @@ import (
 var SynchAlreadyRunningErr error = errors.New("Synch operation already running")
 
 // applies changes to cache async
-type SynchronizedCache struct {
-	*AuthCache
+type SynchronizedAccessCache struct {
+	*AccessCache
 	request       chan struct{}
 	synchronizing atomic.Bool
 	once          sync.Once
 
-	rolesGetter               rbacregistryvalidation.RoleGetter
-	roleBindingsLister        rbacregistryvalidation.RoleBindingLister
-	clusterRolesGetter        rbacregistryvalidation.ClusterRoleGetter
-	clusterRoleBindingsLister rbacregistryvalidation.ClusterRoleBindingLister
-	namespaceLister           client.Reader
+	subjectLocator  rbac.SubjectLocator
+	namespaceLister client.Reader
 
 	logger           *slog.Logger
-	syncErrorHandler func(context.Context, error, *SynchronizedCache)
+	syncErrorHandler func(context.Context, error, *SynchronizedAccessCache)
 	resyncPeriod     time.Duration
 }
 
-func NewSynchronizedCache(
-	rolesGetter rbacregistryvalidation.RoleGetter,
-	roleBindingsLister rbacregistryvalidation.RoleBindingLister,
-	clusterRolesGetter rbacregistryvalidation.ClusterRoleGetter,
-	clusterRoleBindingsLister rbacregistryvalidation.ClusterRoleBindingLister,
+func NewSynchronizedAccessCache(
+	subjectLocator rbac.SubjectLocator,
 	namespaceLister client.Reader,
 	opts CacheSynchronizerOptions,
-) *SynchronizedCache {
-	return opts.Apply(&SynchronizedCache{
-		AuthCache: NewAuthCache(),
-		request:   make(chan struct{}, 1),
+) *SynchronizedAccessCache {
+	return opts.Apply(&SynchronizedAccessCache{
+		AccessCache: NewAccessCache(),
+		request:     make(chan struct{}, 1),
 
-		rolesGetter:               rolesGetter,
-		roleBindingsLister:        roleBindingsLister,
-		clusterRolesGetter:        clusterRolesGetter,
-		clusterRoleBindingsLister: clusterRoleBindingsLister,
-		namespaceLister:           namespaceLister,
+		subjectLocator:  subjectLocator,
+		namespaceLister: namespaceLister,
 	})
 }
 
-func (s *SynchronizedCache) Synch(ctx context.Context) error {
+func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	if !s.synchronizing.CompareAndSwap(false, true) {
 		// already running a synch operation
 		return SynchAlreadyRunningErr
@@ -64,7 +54,6 @@ func (s *SynchronizedCache) Synch(ctx context.Context) error {
 	defer s.synchronizing.Store(false)
 
 	s.logger.Debug("start synchronization")
-	sae := rbac.NewSubjectAccessEvaluator(s.rolesGetter, s.roleBindingsLister, s.clusterRolesGetter, s.clusterRoleBindingsLister, "")
 	nn := corev1.NamespaceList{}
 	if err := s.namespaceLister.List(ctx, &nn); err != nil {
 		return err
@@ -84,7 +73,7 @@ func (s *SynchronizedCache) Synch(ctx context.Context) error {
 			ResourceRequest: true,
 		}
 
-		ss, err := sae.AllowedSubjects(ar)
+		ss, err := s.subjectLocator.AllowedSubjects(ar)
 		if err != nil {
 			// do not forward the error as it should be due
 			// to cache evicted (cluster)roles
@@ -97,13 +86,13 @@ func (s *SynchronizedCache) Synch(ctx context.Context) error {
 	}
 
 	// restock the cache
-	s.AuthCache.restock(&c)
+	s.AccessCache.Restock(&c)
 
 	s.logger.Debug("cache restocked")
 	return nil
 }
 
-func (s *SynchronizedCache) Request() bool {
+func (s *SynchronizedAccessCache) Request() bool {
 	select {
 	case s.request <- struct{}{}:
 		// requested correctly
@@ -114,7 +103,7 @@ func (s *SynchronizedCache) Request() bool {
 	}
 }
 
-func (s *SynchronizedCache) Start(ctx context.Context) {
+func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 	s.once.Do(func() {
 		// run time based resync
 		go func() {
