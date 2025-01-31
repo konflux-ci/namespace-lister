@@ -17,6 +17,10 @@ import (
 
 var SynchAlreadyRunningErr error = errors.New("Synch operation already running")
 
+func isSynchAlreadyRunningErr(err error) bool {
+	return err != nil && errors.Is(err, SynchAlreadyRunningErr)
+}
+
 // applies changes to cache async
 type SynchronizedAccessCache struct {
 	*AccessCache
@@ -132,7 +136,7 @@ func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 				case <-s.request:
 					// a new request is present
 					s.logger.Debug("start requested cache synchronization")
-					if err := s.Synch(ctx); err != nil {
+					if err := s.Synch(ctx); isSynchAlreadyRunningErr(err) {
 						s.syncErrorHandler(ctx, err, s)
 					}
 				}
