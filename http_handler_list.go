@@ -25,7 +25,6 @@ func NewListNamespacesHandler(lister NamespaceLister) http.Handler {
 func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := getLoggerFromContext(ctx)
-	l.Info("received list request")
 
 	ud := r.Context().Value(ContextKeyUserDetails).(*authenticator.Response)
 

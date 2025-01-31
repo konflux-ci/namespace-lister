@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
@@ -25,6 +26,7 @@ type NamespaceListerServer struct {
 
 func addInjectLoggerMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		l = l.With("correlation-id", uuid.NewUUID())
 		ctx := setLoggerIntoContext(r.Context(), l)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
@@ -32,9 +34,11 @@ func addInjectLoggerMiddleware(l *slog.Logger, next http.Handler) http.HandlerFu
 
 func addLogRequestMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := getLoggerFromContext(r.Context())
-		l.Info("received request", "request", r.URL.Path)
+		l := getLoggerFromContext(r.Context()).With("request", r.URL.Path)
+
+		l.Debug("received request")
 		next.ServeHTTP(w, r)
+		l.Debug("request processed")
 	}
 }
 
