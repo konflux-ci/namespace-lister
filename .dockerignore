@@ -1,9 +1,18 @@
-.git
+.git/
+.github/
+.tekton/
 .gitignore
-LICENSE
-README.md
+
+bin/
 config/
+hack/
+mocks/
+out/
+LICENSE
+OWNERS
+README.md
+renovate.json
+.yamllint.yaml
 
-install-local.sh
 acceptance/
-
+install-local.sh
