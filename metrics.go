@@ -127,8 +127,11 @@ func newMetrics(reg prometheus.Registerer) metrics {
 }
 
 func AddMetricsMiddleware(reg prometheus.Registerer, handler http.Handler) http.Handler {
-	m := newMetrics(reg)
+	if reg == nil {
+		return handler
+	}
 
+	m := newMetrics(reg)
 	return promhttp.InstrumentHandlerDuration(
 		m.requestTiming,
 		promhttp.InstrumentHandlerCounter(

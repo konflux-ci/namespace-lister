@@ -23,6 +23,8 @@ spec:
         - -enable-tls
         - -cert-path=/var/tls/tls.crt
         - -key-path=/var/tls/tls.key
+        - -enable-metrics
+        - -metrics-address=:9000
         image: namespace-lister:latest
         name: namespace-lister
         imagePullPolicy: IfNotPresent

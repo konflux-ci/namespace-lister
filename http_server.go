@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
@@ -67,9 +67,7 @@ func addAuthnMiddleware(ar authenticator.Request, next http.Handler) http.Handle
 	}
 }
 
-func NewServer(l *slog.Logger, ar authenticator.Request, lister NamespaceLister) *NamespaceListerServer {
-	reg := NewDefaultRegistry()
-
+func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceLister, reg prometheus.Registerer) *NamespaceListerServer {
 	// configure the server
 	h := http.NewServeMux()
 	h.Handle(patternGetNamespaces,
@@ -78,11 +76,6 @@ func NewServer(l *slog.Logger, ar authenticator.Request, lister NamespaceLister)
 				addLogRequestMiddleware(
 					addAuthnMiddleware(ar,
 						NewListNamespacesHandler(lister))))))
-
-	h.Handle("/metrics",
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-			Registry: reg,
-		}))
 
 	return &NamespaceListerServer{
 		Server: &http.Server{

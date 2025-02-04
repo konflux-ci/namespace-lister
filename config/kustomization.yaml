@@ -4,6 +4,7 @@ resources:
 - certificate.yaml
 - deployment.yaml
 - service.yaml
+- metrics-service.yaml
 - namespace.yaml
 - rbac.yaml
 namespace: namespace-lister

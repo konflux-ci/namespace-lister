@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/client_golang/prometheus"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -45,10 +46,16 @@ func run(l *slog.Logger) error {
 	var enableTLS bool
 	var tlsCertificatePath string
 	var tlsCertificateKeyPath string
+	var enableMetrics bool
+	var metricsAddress string
 	flag.BoolVar(&enableTLS, "enable-tls", true, "Toggle TLS enablement.")
 	flag.StringVar(&tlsCertificatePath, "cert-path", "", "Path to TLS certificate store.")
 	flag.StringVar(&tlsCertificateKeyPath, "key-path", "", "Path to TLS private key.")
+	flag.BoolVar(&enableMetrics, "enable-metrics", true, "Enable metrics server.")
+	flag.StringVar(&metricsAddress, "metrics-address", ":9000", "metrics server address.")
 	flag.Parse()
+
+	var reg *prometheus.Registry
 
 	// get config
 	cfg := ctrl.GetConfigOrDie()
@@ -89,12 +96,29 @@ func run(l *slog.Logger) error {
 	// create the namespace lister
 	nsl := NewNamespaceListerForSubject(accessCache)
 
-	// build http server
-	l.Info("building server")
-	s := NewServer(l, ar, nsl)
+	// build and start http metrics server
+	if enableMetrics {
+		reg := NewDefaultRegistry()
+		l.Info("building metrics server")
+		ms := NewMetricsServer(metricsAddress, reg, reg).
+			WithTLS(enableTLS).
+			WithTLSOpts(loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath))
 
-	// configure TLS
-	s.WithTLS(enableTLS).
+		l.Info("starting metrics server in background")
+		go func() {
+			if err := ms.Start(ctx); err != nil {
+				l.Error("error running metrics server: invalidating context, application will be terminated", "error", err)
+				cancel()
+			}
+		}()
+	} else {
+		l.Info("metrics server disabled via flags")
+	}
+
+	// build http api server
+	l.Info("building api server")
+	s := NewAPIServer(l, ar, nsl, reg).
+		WithTLS(enableTLS).
 		WithTLSOpts(loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath))
 
 	// start the server
