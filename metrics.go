@@ -58,7 +58,6 @@ func newMetrics(reg prometheus.Registerer) metrics {
 				60.0,
 			},
 		}, []string{"code", "method"})
-	reg.MustRegister(requestTiming)
 
 	requestCounter := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -67,7 +66,6 @@ func newMetrics(reg prometheus.Registerer) metrics {
 			Name:      "counter",
 			Help:      "Number of requests completed",
 		}, []string{"code", "method"})
-	reg.MustRegister(requestCounter)
 
 	responseSize := prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -96,7 +94,6 @@ func newMetrics(reg prometheus.Registerer) metrics {
 				500000.0,
 			},
 		}, []string{"code", "method"})
-	reg.MustRegister(responseSize)
 
 	inFlightGauge := prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -105,7 +102,8 @@ func newMetrics(reg prometheus.Registerer) metrics {
 			Name:      "requests_in_flight",
 			Help:      "Number of requests currently processing",
 		})
-	reg.MustRegister(inFlightGauge)
+
+	reg.MustRegister(requestTiming, requestCounter, responseSize, inFlightGauge)
 
 	return metrics{
 		requestTiming:  requestTiming,
