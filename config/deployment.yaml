@@ -45,6 +45,8 @@ spec:
         ports:
         - containerPort: 8080
           name: http
+        - containerPort: 9000
+          name: metrics
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
