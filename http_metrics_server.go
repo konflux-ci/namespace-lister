@@ -17,8 +17,6 @@ type MetricsServer struct {
 	tlsOpts []func(*tls.Config)
 }
 
-type GathererRegisterer interface{}
-
 func NewMetricsServer(address string, gatherer prometheus.Gatherer, registerer prometheus.Registerer) *MetricsServer {
 	// configure the server
 	h := http.NewServeMux()
