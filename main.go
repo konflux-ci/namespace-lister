@@ -98,9 +98,9 @@ func run(l *slog.Logger) error {
 
 	// build and start http metrics server
 	if enableMetrics {
-		reg := NewDefaultRegistry()
+		reg = NewDefaultRegistry()
 		l.Info("building metrics server")
-		ms := NewMetricsServer(metricsAddress, reg, reg).
+		ms := NewMetricsServer(metricsAddress, reg).
 			WithTLS(enableTLS).
 			WithTLSOpts(loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath))
 

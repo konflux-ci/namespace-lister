@@ -17,13 +17,13 @@ type MetricsServer struct {
 	tlsOpts []func(*tls.Config)
 }
 
-func NewMetricsServer(address string, gatherer prometheus.Gatherer, registerer prometheus.Registerer) *MetricsServer {
+func NewMetricsServer(address string, registry *prometheus.Registry) *MetricsServer {
 	// configure the server
 	h := http.NewServeMux()
 
 	h.Handle("/metrics",
-		promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{
-			Registry: registerer,
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+			Registry: registry,
 		}))
 
 	return &MetricsServer{
