@@ -12,6 +12,7 @@ LICENSE
 OWNERS
 README.md
 renovate.json
+.yamllint.yaml
 
 acceptance/
 install-local.sh
