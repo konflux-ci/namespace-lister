@@ -106,10 +106,13 @@ func run(l *slog.Logger) error {
 
 		l.Info("starting metrics server in background")
 		go func() {
+			defer cancel()
+
 			if err := ms.Start(ctx); err != nil {
 				l.Error("error running metrics server: invalidating context, application will be terminated", "error", err)
-				cancel()
+				return
 			}
+			l.Info("metrics server terminated as context has been invalidated")
 		}()
 	} else {
 		l.Info("metrics server disabled via flags")
