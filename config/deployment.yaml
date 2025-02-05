@@ -24,7 +24,7 @@ spec:
         - -cert-path=/var/tls/tls.crt
         - -key-path=/var/tls/tls.key
         - -enable-metrics
-        - -metrics-address=:9000
+        - -metrics-address=:9100
         image: namespace-lister:latest
         name: namespace-lister
         imagePullPolicy: IfNotPresent
@@ -45,7 +45,7 @@ spec:
         ports:
         - containerPort: 8080
           name: http
-        - containerPort: 9000
+        - containerPort: 9100
           name: metrics
         securityContext:
           allowPrivilegeEscalation: false

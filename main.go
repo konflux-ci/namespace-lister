@@ -52,7 +52,7 @@ func run(l *slog.Logger) error {
 	flag.StringVar(&tlsCertificatePath, "cert-path", "", "Path to TLS certificate store.")
 	flag.StringVar(&tlsCertificateKeyPath, "key-path", "", "Path to TLS private key.")
 	flag.BoolVar(&enableMetrics, "enable-metrics", true, "Enable metrics server.")
-	flag.StringVar(&metricsAddress, "metrics-address", ":9000", "metrics server address.")
+	flag.StringVar(&metricsAddress, "metrics-address", ":9100", "metrics server address.")
 	flag.Parse()
 
 	var reg *prometheus.Registry

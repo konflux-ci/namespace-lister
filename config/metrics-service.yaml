@@ -9,5 +9,5 @@ spec:
   type: ClusterIP
   ports:
   - name: metrics
-    targetPort: 9000
-    port: 9000
+    targetPort: 9100
+    port: 9100
