@@ -246,6 +246,44 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
 		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 	})
+
+	It("efficiently synchronizes access cache", Serial, Label("perf"), func(ctx context.Context) {
+		// new gomega experiment
+		experiment := gmeasure.NewExperiment("Access Cache Synch")
+
+		// Register the experiment as a ReportEntry - this will cause Ginkgo's reporter infrastructure
+		// to print out the experiment's report and to include the experiment in any generated reports
+		AddReportEntry(experiment.Name, experiment)
+
+		// create cache, namespacelister, and handler
+		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+		utilruntime.Must(err)
+		c, err := buildAndStartAccessCache(ctx, cache)
+		utilruntime.Must(err)
+
+		// we sample a function repeatedly to get a statistically significant set of measurements
+		experiment.Sample(func(idx int) {
+			var err error
+
+			// measure ListNamespaces
+			experiment.MeasureDuration("cache synch", func() {
+				err = c.Synch(ctx)
+			})
+
+			// check results
+			if err != nil {
+				panic(err)
+			}
+		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
+		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
+
+		// we get the median synch duration from the experiment we just ran
+		httpListingStats := experiment.GetStats("cache synch")
+		medianDuration := httpListingStats.DurationFor(gmeasure.StatMedian)
+
+		// and assert that it hasn't changed much from ~150ms
+		Expect(medianDuration).To(BeNumerically("~", 150*time.Millisecond, 30*time.Millisecond))
+	})
 })
 
 func createResources(ctx context.Context, cli client.Client, user string, numAllowedNamespaces, numUnallowedNamespaces, numNonMatchingClusterRoles int) (error, []client.Object, []client.Object) {
