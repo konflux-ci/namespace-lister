@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -261,6 +263,9 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		c, err := buildAndStartAccessCache(ctx, cache)
 		utilruntime.Must(err)
 
+		Expect(c.AccessCache.LenSubjects()).To(BeNumerically(">", 5000))
+		Expect(c.AccessCache.LenNamespaces()).To(BeNumerically(">", 10000))
+
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
 			var err error
@@ -281,8 +286,8 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		httpListingStats := experiment.GetStats("cache synch")
 		medianDuration := httpListingStats.DurationFor(gmeasure.StatMedian)
 
-		// and assert that it hasn't changed much from ~150ms
-		Expect(medianDuration).To(BeNumerically("~", 150*time.Millisecond, 30*time.Millisecond))
+		// and assert that it is below a threshold
+		Expect(medianDuration).To(BeNumerically("<=", 200*time.Millisecond))
 	})
 })
 
@@ -363,14 +368,14 @@ func namespaces(generateName string, quantity int) []client.Object {
 func allowedTenants(user string, namespaces []client.Object, pollutingRoleBindings int, matchingRoleRefKind, matchingRoleRefName, nonMatchingRoleRefKind, nonMatchingRoleRefName string) []client.Object {
 	rr := make([]client.Object, 0, len(namespaces)*(pollutingRoleBindings+1))
 	for _, n := range namespaces {
-
 		// add access role binding
 		rr = append(rr, &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "allowed-tenant-",
 				Namespace:    n.GetName(),
 			},
-			Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+			Subjects: append(randNotPerfTestUsers(5),
+				rbacv1.Subject{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}),
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     matchingRoleRefKind,
@@ -380,12 +385,18 @@ func allowedTenants(user string, namespaces []client.Object, pollutingRoleBindin
 
 		// add pollution
 		for range pollutingRoleBindings {
+			subjects := slices.Concat(
+				[]rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				randNotPerfTestUsers(5),
+				randNotPerfTestServiceAccounts(5),
+			)
+
 			rr = append(rr, &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "pollution-",
 					Namespace:    n.GetName(),
 				},
-				Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				Subjects: subjects,
 				RoleRef: rbacv1.RoleRef{
 					APIGroup: rbacv1.GroupName,
 					Kind:     nonMatchingRoleRefKind,
@@ -406,7 +417,7 @@ func unallowedTenants(user string, namespaces []client.Object, pollutingRoleBind
 				GenerateName: "non-allowed-tenant-",
 				Namespace:    n.GetName(),
 			},
-			Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: "not-the-perf-test-user"}},
+			Subjects: randNotPerfTestUsers(5),
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     matchingRoleRefKind,
@@ -416,12 +427,18 @@ func unallowedTenants(user string, namespaces []client.Object, pollutingRoleBind
 
 		// add pollution
 		for range pollutingRoleBindings {
+			subjects := slices.Concat(
+				[]rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				randNotPerfTestUsers(5),
+				randNotPerfTestServiceAccounts(5),
+			)
+
 			rr = append(rr, &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "pollution-",
 					Namespace:    n.GetName(),
 				},
-				Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				Subjects: subjects,
 				RoleRef: rbacv1.RoleRef{
 					APIGroup: rbacv1.GroupName,
 					Kind:     nonMatchingRoleRefKind,
@@ -431,4 +448,24 @@ func unallowedTenants(user string, namespaces []client.Object, pollutingRoleBind
 		}
 	}
 	return rr
+}
+
+func randNotPerfTestServiceAccounts(size int) []rbacv1.Subject {
+	return randNotPerfTestSubject(size, "", "ServiceAccount")
+}
+
+func randNotPerfTestUsers(size int) []rbacv1.Subject {
+	return randNotPerfTestSubject(size, rbacv1.GroupName, "User")
+}
+
+func randNotPerfTestSubject(size int, apiGroup, kind string) []rbacv1.Subject {
+	ss := make([]rbacv1.Subject, size, size)
+	for i := range size {
+		ss[i] = rbacv1.Subject{
+			APIGroup: apiGroup,
+			Kind:     kind,
+			Name:     fmt.Sprintf("not-the-perf-test-%s-%d", strings.ToLower(kind), rand.Int64()), //nolint:gosec,G404
+		}
+	}
+	return ss
 }

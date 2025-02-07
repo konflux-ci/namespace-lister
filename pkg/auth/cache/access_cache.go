@@ -29,3 +29,15 @@ func (c *AccessCache) List(subject rbacv1.Subject) []corev1.Namespace {
 func (c *AccessCache) Restock(data *map[rbacv1.Subject][]corev1.Namespace) {
 	c.data.Store(data)
 }
+
+func (c *AccessCache) LenSubjects() int {
+	return len(*c.data.Load())
+}
+
+func (c *AccessCache) LenNamespaces() int {
+	n := 0
+	for _, v := range *c.data.Load() {
+		n += len(v)
+	}
+	return n
+}
