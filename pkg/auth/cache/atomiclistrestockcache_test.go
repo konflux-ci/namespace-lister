@@ -24,7 +24,7 @@ var _ = Describe("AuthCache", func() {
 
 	It("returns an empty result if it is empty", func() {
 		// given
-		emptyCache := cache.NewAccessCache()
+		emptyCache := cache.NewAtomicListRestockAccessCache()
 
 		// when
 		nn := emptyCache.List(rbacv1.Subject{})
@@ -36,8 +36,8 @@ var _ = Describe("AuthCache", func() {
 	It("matches subjects", func() {
 		// given
 		sub := rbacv1.Subject{Kind: "User", Name: "myuser"}
-		c := cache.NewAccessCache()
-		c.Restock(&cache.AccessData{sub: enn})
+		c := cache.NewAtomicListRestockAccessCache()
+		c.Restock(&map[rbacv1.Subject][]corev1.Namespace{sub: enn})
 
 		// when
 		nn := c.List(sub)

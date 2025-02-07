@@ -1,34 +1,20 @@
 package cache
 
 import (
-	"sync/atomic"
-
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-// AccessData is the data the AccessCache stores
-type AccessData map[rbacv1.Subject][]corev1.Namespace
-
-// stores data
-type AccessCache struct {
-	data atomic.Pointer[AccessData]
+// AccessCache represents a cache that can list namespaces a subject has access to.
+// Data in the cache can be updated via the Restock method.
+type AccessCache interface {
+	// List list all the namespaces a subject has access to
+	List(subject rbacv1.Subject) []corev1.Namespace
+	// Restock updates the data stored in the cache
+	Restock(data *map[rbacv1.Subject][]corev1.Namespace)
 }
 
-func NewAccessCache() *AccessCache {
-	return &AccessCache{
-		data: atomic.Pointer[AccessData]{},
-	}
-}
-
-func (c *AccessCache) List(subject rbacv1.Subject) []corev1.Namespace {
-	m := c.data.Load()
-	if m == nil {
-		return nil
-	}
-	return (*m)[subject]
-}
-
-func (c *AccessCache) Restock(data *AccessData) {
-	c.data.Store(data)
+// NewAtomicListRestockAccessCache builds an AccessCache leveraging on the AtomicListRestockCache
+func NewAtomicListRestockAccessCache() AccessCache {
+	return newAtomicListRestockCache[rbacv1.Subject, []corev1.Namespace]()
 }
