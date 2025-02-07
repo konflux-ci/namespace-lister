@@ -11,18 +11,22 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 )
 
+// NewAuthorizer builds a new RBACAuthorizer
 func NewAuthorizer(ctx context.Context, cli client.Reader) *rbac.RBACAuthorizer {
 	aur := &CRAuthRetriever{cli, ctx, getLoggerFromContext(ctx)}
 	ra := rbac.New(aur, aur, aur, aur)
 	return ra
 }
 
+// CRAuthRetriever implements RoleGetter, RoleBindingLister, ClusterRoleGetter, ClusterRoleBindingLister
+// on top of a Controller-Runtime's Reader
 type CRAuthRetriever struct {
 	cli client.Reader
 	ctx context.Context
 	l   *slog.Logger
 }
 
+// NewCRAuthRetriever builds a new CRAuthRetriever
 func NewCRAuthRetriever(ctx context.Context, cli client.Reader, l *slog.Logger) *CRAuthRetriever {
 	return &CRAuthRetriever{
 		cli: cli,
@@ -31,6 +35,7 @@ func NewCRAuthRetriever(ctx context.Context, cli client.Reader, l *slog.Logger) 
 	}
 }
 
+// GetRole retrieves a Role by namespace and name
 func (r *CRAuthRetriever) GetRole(namespace, name string) (*rbacv1.Role, error) {
 	ro := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
@@ -45,6 +50,7 @@ func (r *CRAuthRetriever) GetRole(namespace, name string) (*rbacv1.Role, error) 
 	return &ro, nil
 }
 
+// ListRoleBindings retrieves RoleBindings from a namespace
 func (r *CRAuthRetriever) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {
 	rbb := rbacv1.RoleBindingList{}
 	if err := r.cli.List(r.ctx, &rbb, client.InNamespace(namespace)); err != nil {
@@ -59,6 +65,7 @@ func (r *CRAuthRetriever) ListRoleBindings(namespace string) ([]*rbacv1.RoleBind
 	return rbbp, nil
 }
 
+// GetClusterRole retrieves a ClusterRole by name
 func (r *CRAuthRetriever) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
 	ro := rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -72,6 +79,7 @@ func (r *CRAuthRetriever) GetClusterRole(name string) (*rbacv1.ClusterRole, erro
 	return &ro, nil
 }
 
+// ListClusterRoleBindings retrieves ClusterRoleBindings
 func (r *CRAuthRetriever) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
 	rbb := rbacv1.ClusterRoleBindingList{}
 	if err := r.cli.List(r.ctx, &rbb); err != nil {

@@ -208,10 +208,10 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create cache, namespacelister, and handler
 		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartAccessCache(ctx, cache)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, cache)
 		utilruntime.Must(err)
 
-		nl := NewNamespaceListerForSubject(c)
+		nl := NewSubjectNamespaceLister(c)
 		lnh := NewListNamespacesHandler(nl)
 
 		// we sample a function repeatedly to get a statistically significant set of measurements

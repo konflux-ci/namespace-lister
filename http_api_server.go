@@ -3,34 +3,40 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
-// MetricsServer is an HTTP Server that serves metrics for the APIServer
-type MetricsServer struct {
+const (
+	patternGetNamespaces string = "GET /api/v1/namespaces"
+)
+
+// APIServer is an HTTP server that serves the List Namespace endpoint
+type APIServer struct {
 	*http.Server
 	useTLS  bool
 	tlsOpts []func(*tls.Config)
 }
 
-// NewMetricsServer builds a new MetricsServer
-func NewMetricsServer(address string, registry *prometheus.Registry) *MetricsServer {
+// NewAPIServer builds a new APIServer
+func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceLister, reg prometheus.Registerer) *APIServer {
 	// configure the server
 	h := http.NewServeMux()
+	h.Handle(patternGetNamespaces,
+		addMetricsMiddleware(reg,
+			addInjectLoggerMiddleware(l,
+				addLogRequestMiddleware(
+					addAuthnMiddleware(ar,
+						NewListNamespacesHandler(lister))))))
 
-	h.Handle("/metrics",
-		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-			Registry: registry,
-		}))
-
-	return &MetricsServer{
+	return &APIServer{
 		Server: &http.Server{
-			Addr:              address,
+			Addr:              getAddress(),
 			Handler:           h,
 			ReadHeaderTimeout: 3 * time.Second,
 		},
@@ -38,21 +44,21 @@ func NewMetricsServer(address string, registry *prometheus.Registry) *MetricsSer
 }
 
 // WithTLS enables the TLS Support
-func (s *MetricsServer) WithTLS(enableTLS bool) *MetricsServer {
+func (s *APIServer) WithTLS(enableTLS bool) *APIServer {
 	s.useTLS = enableTLS
 	return s
 }
 
 // WithTLSOpts allows to configure the TLS support
-func (s *MetricsServer) WithTLSOpts(tlsOpts ...func(*tls.Config)) *MetricsServer {
+func (s *APIServer) WithTLSOpts(tlsOpts ...func(*tls.Config)) *APIServer {
 	s.tlsOpts = tlsOpts
 	return s
 }
 
-// Start start the MetricsServer blocking the current routine.
+// Start start the APIServer blocking the current routine.
 // It monitors in a separate routine shutdown requests by waiting
 // for the provided context to be invalidated.
-func (s *MetricsServer) Start(ctx context.Context) error {
+func (s *APIServer) Start(ctx context.Context) error {
 	// HTTP Server graceful shutdown
 	go func() {
 		<-ctx.Done()
@@ -62,7 +68,7 @@ func (s *MetricsServer) Start(ctx context.Context) error {
 
 		//nolint:contextcheck
 		if err := s.Shutdown(sctx); err != nil {
-			getLoggerFromContext(ctx).Error("error gracefully shutting down the metrics HTTP server", "error", err)
+			getLoggerFromContext(ctx).Error("error gracefully shutting down the HTTP server", "error", err)
 			os.Exit(1)
 		}
 	}()
