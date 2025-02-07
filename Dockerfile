@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM registry.access.redhat.com/ubi9/go-toolset@sha256:13a101e05f4d878cc82ec70d8823b175a35530f91b592611dd48640daf4ea8bc AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset@sha256:80086a5f16a5a4a7eedaf8d3fa0696f3013df80cfe68e1dd8ab4d0ae5cf0c886 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM registry.access.redhat.com/ubi9/ubi-micro@sha256:03692dc74d7a1870540bfe92ebded314cfd37b72d6174935c9aaf65d6b875269
+FROM registry.access.redhat.com/ubi9/ubi-micro@sha256:c6f08c52ecdd78355a2debedc2fc4ae8a90a59eb1a48ace5443dc10e9a33d50b
 WORKDIR /
 COPY --from=builder /tmp/server .
 USER 65532:65532
