@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -84,6 +86,10 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 			s.logger.Debug("cache restocking: error caculating allowed subjects", "error", err)
 		}
 
+		// remove duplicates from allowed subjects
+		ss = s.removeDuplicateSubjects(ss)
+
+		// store in temp cache
 		for _, s := range ss {
 			c[s] = append(c[s], ns)
 		}
@@ -94,6 +100,35 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 
 	s.logger.Debug("cache restocked")
 	return nil
+}
+
+func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
+	// sort the list of subjects
+	slices.SortFunc(ss, func(a, b rbacv1.Subject) int {
+		switch {
+		case a.APIGroup != b.APIGroup:
+			return strings.Compare(a.APIGroup, b.APIGroup)
+		case a.Kind != b.Kind:
+			return strings.Compare(a.Kind, b.Kind)
+		case a.Namespace != b.Namespace:
+			return strings.Compare(a.Namespace, b.Namespace)
+		case a.Name != b.Name:
+			return strings.Compare(a.Name, b.Name)
+		default:
+			return 0
+		}
+	})
+
+	// remove duplicates
+	ss = slices.CompactFunc(ss, func(a, b rbacv1.Subject) bool {
+		return a.APIGroup == b.APIGroup &&
+			a.Kind == b.Kind &&
+			a.Namespace == b.Namespace &&
+			a.Name == b.Name
+	})
+
+	// reduce slice capacity to its length
+	return slices.Clip(ss)
 }
 
 func (s *SynchronizedAccessCache) Request() bool {
