@@ -123,10 +123,6 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 		DefaultUnsafeDisableDeepCopy: ptr(true),
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
-				Transform: mergeTransformFunc(
-					cache.TransformStripManagedFields(),
-					trimAnnotations(),
-				),
 				Label: cfg.namespacesLabelSector,
 			},
 			&rbacv1.ClusterRole{}: {
