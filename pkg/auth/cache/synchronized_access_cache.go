@@ -151,7 +151,7 @@ func (s *SynchronizedAccessCache) Request() bool {
 	}
 }
 
-// Start runs two goroutines to keep the cache is kept up-to-date.
+// Start runs two goroutines to keep the cache up-to-date.
 //
 // The former will enqueue requests to synch the cache by intervals of `resyncPeriod`.
 // The latter waits for requests to synch the cache and runs the Synch operation.
