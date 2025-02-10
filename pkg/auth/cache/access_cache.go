@@ -8,7 +8,7 @@ import (
 // AccessCache represents a cache that can list namespaces a subject has access to.
 // Data in the cache can be updated via the Restock method.
 type AccessCache interface {
-	// List list all the namespaces a subject has access to
+	// List lists all the namespaces a subject has access to
 	List(subject rbacv1.Subject) []corev1.Namespace
 	// Restock updates the data stored in the cache
 	Restock(data *map[rbacv1.Subject][]corev1.Namespace)

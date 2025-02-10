@@ -12,7 +12,7 @@ import (
 )
 
 // addInjectLoggerMiddleware injects the provided logger in each request context.
-// It also generates and set a correlation ID for each request.
+// It also generates and sets a correlation ID for each request.
 func addInjectLoggerMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l = l.With("correlation-id", uuid.NewUUID())
@@ -59,7 +59,7 @@ func addAuthnMiddleware(ar authenticator.Request, next http.Handler) http.Handle
 	}
 }
 
-// addMetricsMiddleware add a set of middlewares that collect metrics for each requests
+// addMetricsMiddleware adds a set of middlewares that collect metrics for each requests
 func addMetricsMiddleware(reg prometheus.Registerer, handler http.Handler) http.Handler {
 	if reg == nil {
 		return handler

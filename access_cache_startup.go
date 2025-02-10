@@ -16,7 +16,7 @@ import (
 )
 
 // buildAndStartSynchronizedAccessCache builds a SynchronizedAccessCache.
-// It register handlers on events on resources that will trigger an AccessCache synchronization.
+// It registers handlers on events on resources that will trigger an AccessCache synchronization.
 func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crcache.Cache) (*authcache.SynchronizedAccessCache, error) {
 	aur := &CRAuthRetriever{resourceCache, ctx, getLoggerFromContext(ctx)}
 	sae := rbac.NewSubjectAccessEvaluator(aur, aur, aur, aur, "")

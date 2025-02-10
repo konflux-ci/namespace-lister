@@ -21,7 +21,7 @@ import (
 // If the value in the header was provided, it assumes a proxy already authenticated the request.
 //
 // If header authentication is disabled or the header is not set in the request,
-// the requests is authenticated by via the DelegatingAuthenticator configured with
+// the request is authenticated by the DelegatingAuthenticator configured with
 // disabled anonymous access and enabled TokenAccessReview. This means it will look for a JWT
 // Token in the request and ask the APIServer to authenticate it.
 // APIServer replies are cached for a short time.

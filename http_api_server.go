@@ -55,7 +55,7 @@ func (s *APIServer) WithTLSOpts(tlsOpts ...func(*tls.Config)) *APIServer {
 	return s
 }
 
-// Start start the APIServer blocking the current routine.
+// Start starts the APIServer blocking the current routine.
 // It monitors in a separate routine shutdown requests by waiting
 // for the provided context to be invalidated.
 func (s *APIServer) Start(ctx context.Context) error {

@@ -139,7 +139,7 @@ func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) [
 
 // Request allows events to request to run a Synch operation.
 // Only one request is kept in memory. If a Synch operation has already been
-// requested -but still not processed, and a new request comes it will be discarded.
+// requested - but still not processed, and a new request comes it will be discarded.
 func (s *SynchronizedAccessCache) Request() bool {
 	select {
 	case s.request <- struct{}{}:
@@ -154,7 +154,7 @@ func (s *SynchronizedAccessCache) Request() bool {
 // Start runs two goroutines to keep the cache is kept up-to-date.
 //
 // The former will enqueue requests to synch the cache by intervals of `resyncPeriod`.
-// The latter waits for requests to synch the cache and it runs the Synch operation.
+// The latter waits for requests to synch the cache and runs the Synch operation.
 func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 	s.once.Do(func() {
 		// run time based resync

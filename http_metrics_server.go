@@ -49,7 +49,7 @@ func (s *MetricsServer) WithTLSOpts(tlsOpts ...func(*tls.Config)) *MetricsServer
 	return s
 }
 
-// Start start the MetricsServer blocking the current routine.
+// Start starts the MetricsServer blocking the current routine.
 // It monitors in a separate routine shutdown requests by waiting
 // for the provided context to be invalidated.
 func (s *MetricsServer) Start(ctx context.Context) error {
