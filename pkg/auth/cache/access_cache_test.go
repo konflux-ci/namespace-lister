@@ -37,7 +37,7 @@ var _ = Describe("AuthCache", func() {
 		// given
 		sub := rbacv1.Subject{Kind: "User", Name: "myuser"}
 		c := cache.NewAccessCache()
-		c.Restock(&map[rbacv1.Subject][]corev1.Namespace{sub: enn})
+		c.Restock(&cache.AccessData{sub: enn})
 
 		// when
 		nn := c.List(sub)

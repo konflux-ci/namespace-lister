@@ -8,8 +8,11 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
+	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gmeasure"
@@ -257,14 +260,24 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// to print out the experiment's report and to include the experiment in any generated reports
 		AddReportEntry(experiment.Name, experiment)
 
-		// create cache, namespacelister, and handler
-		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+		// create resourceCache, namespacelister, and handler
+		resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartAccessCache(ctx, cache)
+		c, err := buildAndStartAccessCache(ctx, resourceCache)
 		utilruntime.Must(err)
 
-		Expect(c.AccessCache.LenSubjects()).To(BeNumerically(">", 5000))
-		Expect(c.AccessCache.LenNamespaces()).To(BeNumerically(">", 10000))
+		// check cache is correctly populated with
+		// more than 5000 subjects
+		// and more than 10000 total namespaces
+		cacheData := unsafeGetPrivateCacheData(c.AccessCache)
+		Expect(len(cacheData)).To(BeNumerically(">", 5000))
+		Expect(cacheData).To(Satisfy(func(d cache.AccessData) bool {
+			n := 0
+			for _, v := range d {
+				n += len(v)
+			}
+			return n > 10000
+		}))
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
@@ -290,6 +303,27 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		Expect(medianDuration).To(BeNumerically("<=", 200*time.Millisecond))
 	})
 })
+
+// unsafeGetPrivateCacheData retrieves the map used by the cache to store data.
+// WARNING: This is unsafe and can break if the AccessCache definition is changed.
+// If the AccessCache is changed and `data` is no more the first field in the struct,
+// we need to calculate the appropriate value for the variable `cacheDataSkew`.
+// As an example, if we add a string before the data field, cacheDataSkew will become:
+//
+//	cacheDataSkew := uintptr(unsafe.Sizeof(new(string)))
+func unsafeGetPrivateCacheData(accessCache *cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
+	// create an unsafe.Pointer to the AccessCache
+	cacheBasePtr := unsafe.Pointer(accessCache)
+	// calculate the cacheDataSkew of the AccessCache's data from the AccessCache base
+	cacheDataSkew := uintptr(0)
+	// create a pointer to cache's data location
+	cacheDataPtr := unsafe.Pointer(uintptr(cacheBasePtr) + cacheDataSkew)
+
+	// cast to the actual type
+	dataAtomicPtr := (*atomic.Pointer[cache.AccessData])(cacheDataPtr)
+	// load atomic pointer and return data
+	return *dataAtomicPtr.Load()
+}
 
 func createResources(ctx context.Context, cli client.Client, user string, numAllowedNamespaces, numUnallowedNamespaces, numNonMatchingClusterRoles int) (error, []client.Object, []client.Object) {
 	// cluster scoped resources
