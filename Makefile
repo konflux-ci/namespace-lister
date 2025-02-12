@@ -4,6 +4,8 @@ LOCALBIN := $(ROOT_DIR)/bin
 OUT_DIR := $(ROOT_DIR)/out
 
 GINKGO ?= ginkgo
+GINKGO_ARGS ?=
+
 GO ?= go
 
 PERF_OUT_DIR := $(OUT_DIR)/perf
@@ -52,7 +54,7 @@ fmt: ## Run go fmt against code.
 
 .PHONY: test
 test: ## Run go test against code.
-	$(GINKGO) --label-filter='!perf' ./pkg/... ./
+	$(GINKGO) $(GINKGO_ARGS) --label-filter='!perf' ./pkg/... ./
 
 .PHONY: test-perf
 test-perf: ## Run performance tests
