@@ -7,14 +7,17 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
+// AccessData is the data the AccessCache stores
+type AccessData map[rbacv1.Subject][]corev1.Namespace
+
 // stores data
 type AccessCache struct {
-	data atomic.Pointer[map[rbacv1.Subject][]corev1.Namespace]
+	data atomic.Pointer[AccessData]
 }
 
 func NewAccessCache() *AccessCache {
 	return &AccessCache{
-		data: atomic.Pointer[map[rbacv1.Subject][]corev1.Namespace]{},
+		data: atomic.Pointer[AccessData]{},
 	}
 }
 
@@ -26,6 +29,6 @@ func (c *AccessCache) List(subject rbacv1.Subject) []corev1.Namespace {
 	return (*m)[subject]
 }
 
-func (c *AccessCache) Restock(data *map[rbacv1.Subject][]corev1.Namespace) {
+func (c *AccessCache) Restock(data *AccessData) {
 	c.data.Store(data)
 }
