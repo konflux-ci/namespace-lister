@@ -39,6 +39,7 @@ var _ = Describe("Subjectnamespaceslister", func() {
 		// set expectation
 		subjectNamespacesLister.EXPECT().
 			List(
+				ctx,
 				rbacv1.Subject{
 					Kind:      "ServiceAccount",
 					Name:      "myserviceaccount",
@@ -67,6 +68,7 @@ var _ = Describe("Subjectnamespaceslister", func() {
 		// set expectation
 		subjectNamespacesLister.EXPECT().
 			List(
+				ctx,
 				rbacv1.Subject{
 					APIGroup: rbacv1.GroupName,
 					Kind:     "User",

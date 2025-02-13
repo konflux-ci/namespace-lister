@@ -2,6 +2,7 @@ package cache_test
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -11,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -88,7 +90,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(userSubject)).To(BeEmpty())
+		Expect(nsc.List(ctx, userSubject)).To(BeEmpty())
 	})
 
 	It("matches user after synch", func(ctx context.Context) {
@@ -100,6 +102,20 @@ var _ = Describe("SynchronizedAccessCache", func() {
 				return nil
 			}).
 			Times(1)
+		namespaceLister.EXPECT().
+			Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nn types.NamespacedName, object client.Object, opts ...client.ListOption) error {
+				for _, meta := range namespaces {
+					if meta.Name == nn.Name {
+						object.SetName(meta.Name)
+						object.SetLabels(meta.Labels)
+						object.SetAnnotations(meta.Annotations)
+						return nil
+					}
+				}
+				return fmt.Errorf("namespace %s not found", nn.Name)
+			}).
+			Times(1)
 		subjectLocator.EXPECT().
 			AllowedSubjects(gomock.Any()).
 			Return([]rbacv1.Subject{userSubject}, nil).
@@ -108,7 +124,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(userSubject)).To(BeEquivalentTo(namespaces))
+		Expect(nsc.List(ctx, userSubject)).To(BeEquivalentTo(namespaces))
 	})
 
 	It("matches ServiceAccount after synch", func(ctx context.Context) {
@@ -120,6 +136,20 @@ var _ = Describe("SynchronizedAccessCache", func() {
 				return nil
 			}).
 			Times(1)
+		namespaceLister.EXPECT().
+			Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nn types.NamespacedName, object client.Object, opts ...client.ListOption) error {
+				for _, meta := range namespaces {
+					if meta.Name == nn.Name {
+						object.SetName(meta.Name)
+						object.SetLabels(meta.Labels)
+						object.SetAnnotations(meta.Annotations)
+						return nil
+					}
+				}
+				return fmt.Errorf("namespace %s not found", nn.Name)
+			}).
+			Times(1)
 		subjectLocator.EXPECT().
 			AllowedSubjects(gomock.Any()).
 			Return([]rbacv1.Subject{serviceAccountSubject}, nil).
@@ -128,7 +158,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(serviceAccountSubject)).To(BeEquivalentTo(namespaces))
+		Expect(nsc.List(ctx, serviceAccountSubject)).To(BeEquivalentTo(namespaces))
 	})
 })
 
@@ -142,13 +172,27 @@ var _ = DescribeTable("duplicate results", func(ctx context.Context, sr *mocks.M
 			return nil
 		}).
 		Times(1)
+	namespaceLister.EXPECT().
+		Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, nn types.NamespacedName, object client.Object, opts ...client.ListOption) error {
+			for _, meta := range namespaces {
+				if meta.Name == nn.Name {
+					object.SetName(meta.Name)
+					object.SetLabels(meta.Labels)
+					object.SetAnnotations(meta.Annotations)
+					return nil
+				}
+			}
+			return fmt.Errorf("namespace %s not found", nn.Name)
+		}).
+		AnyTimes()
 
 	realSubjectLocator := rbac.NewSubjectAccessEvaluator(sr, sr, sr, sr, "")
 
 	nsc := cache.NewSynchronizedAccessCache(realSubjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 	Expect(nsc.Synch(ctx)).To(Succeed())
-	Expect(nsc.AccessCache.List(userSubject)).To(BeEquivalentTo(namespaces))
+	Expect(nsc.List(ctx, userSubject)).To(BeEquivalentTo(namespaces))
 },
 	Entry("does not produce duplicates with multiple RoleBindings to access ClusterRole", &mocks.MockStaticRoles{
 		ClusterRoles: []*rbacv1.ClusterRole{

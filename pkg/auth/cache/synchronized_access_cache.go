@@ -12,6 +12,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,7 +27,7 @@ func isSynchAlreadyRunningErr(err error) bool {
 
 // applies changes to cache async
 type SynchronizedAccessCache struct {
-	*AccessCache
+	cache         *AccessCache
 	request       chan struct{}
 	synchronizing atomic.Bool
 	once          sync.Once
@@ -44,8 +46,8 @@ func NewSynchronizedAccessCache(
 	opts CacheSynchronizerOptions,
 ) *SynchronizedAccessCache {
 	return opts.Apply(&SynchronizedAccessCache{
-		AccessCache: NewAccessCache(),
-		request:     make(chan struct{}, 1),
+		cache:   NewAccessCache(),
+		request: make(chan struct{}, 1),
 
 		subjectLocator:  subjectLocator,
 		namespaceLister: namespaceLister,
@@ -65,7 +67,7 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 		return err
 	}
 
-	c := map[rbacv1.Subject][]corev1.Namespace{}
+	c := map[rbacv1.Subject]sets.Set[string]{}
 
 	// get subjects for each namespace
 	for _, ns := range nn.Items {
@@ -91,12 +93,16 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 
 		// store in temp cache
 		for _, s := range ss {
-			c[s] = append(c[s], ns)
+			if _, exists := c[s]; !exists {
+				c[s] = sets.New(ns.Name)
+			} else {
+				c[s].Insert(ns.Name)
+			}
 		}
 	}
 
 	// restock the cache
-	s.AccessCache.Restock(&c)
+	s.cache.Restock(&c)
 
 	s.logger.Debug("cache restocked")
 	return nil
@@ -178,4 +184,22 @@ func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 			}
 		}()
 	})
+}
+
+func (s *SynchronizedAccessCache) List(ctx context.Context, subject rbacv1.Subject) []corev1.Namespace {
+	namespaces := s.cache.List(subject)
+	namespaceList := make([]corev1.Namespace, 0, len(namespaces))
+
+	for _, ns := range namespaces {
+		namespace := corev1.Namespace{}
+		err := s.namespaceLister.Get(ctx, types.NamespacedName{Name: ns}, &namespace)
+		if err != nil {
+			slog.Error("failed to retrieve namespace", "namespace", ns, "err", err)
+			continue
+		}
+
+		namespaceList = append(namespaceList, namespace)
+	}
+
+	return namespaceList
 }

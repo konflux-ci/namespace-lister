@@ -12,7 +12,7 @@ import (
 var _ NamespaceLister = &subjectNamespaceLister{}
 
 type SubjectNamespacesLister interface {
-	List(subject rbacv1.Subject) []corev1.Namespace
+	List(context.Context, rbacv1.Subject) []corev1.Namespace
 }
 
 type subjectNamespaceLister struct {
@@ -27,7 +27,7 @@ func NewNamespaceListerForSubject(subjectNamespacesLister SubjectNamespacesListe
 
 func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 	sub := c.parseUsername(username)
-	nn := c.subjectNamespacesLister.List(sub)
+	nn := c.subjectNamespacesLister.List(ctx, sub)
 
 	// list all namespaces
 	return &corev1.NamespaceList{
