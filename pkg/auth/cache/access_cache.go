@@ -5,6 +5,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
+type AccessData map[rbacv1.Subject][]corev1.Namespace
+
 // AccessCache represents a cache that can list namespaces a subject has access to.
 // Data in the cache can be updated via the Restock method.
 type AccessCache interface {

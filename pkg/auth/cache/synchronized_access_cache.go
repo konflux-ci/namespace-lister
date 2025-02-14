@@ -71,7 +71,7 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 		return err
 	}
 
-	c := AccessData{}
+	c := map[rbacv1.Subject][]corev1.Namespace{}
 
 	// get subjects for each namespace
 	for _, ns := range nn.Items {
