@@ -20,18 +20,11 @@ import (
 )
 
 func InjectSteps(ctx *godog.ScenarioContext) {
-	// read
-	ctx.Step(`^ServiceAccount has access to a namespace$`,
-		func(ctx context.Context) (context.Context, error) { return UserInfoHasAccessToNNamespaces(ctx, 1) })
-	ctx.Step(`^User has access to a namespace$`,
-		func(ctx context.Context) (context.Context, error) { return UserHasAccessToNNamespaces(ctx, 1) })
+	ctx.Given(`^ServiceAccount has access to "([^"]*)" namespaces$`, UserInfoHasAccessToNNamespaces)
+	ctx.Given(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
 
-	// list
-	ctx.Step(`^ServiceAccount has access to "([^"]*)" namespaces$`, UserInfoHasAccessToNNamespaces)
-	ctx.Step(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
-	ctx.Step(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
-	ctx.Step(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
-
+	ctx.Then(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+	ctx.Then(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User request is rejected with unauthorized error$`, userRequestIsRejectedWithUnauthorizerError)
 }
 
