@@ -11,6 +11,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,6 +33,22 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
 	ctx.Step(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Step(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+
+	ctx.Then(`^the User request is rejected with unauthorized error$`, userRequestIsRejectedWithUnauthorizerError)
+}
+
+func userRequestIsRejectedWithUnauthorizerError(ctx context.Context) (context.Context, error) {
+	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
+	nn := corev1.NamespaceList{}
+	if err := cli.List(ctx, &nn); !errors.IsUnauthorized(err) {
+		return ctx, err
+	}
+
+	return ctx, nil
 }
 
 func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
