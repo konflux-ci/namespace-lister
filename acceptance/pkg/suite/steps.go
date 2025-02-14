@@ -13,7 +13,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
@@ -26,7 +25,6 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 		func(ctx context.Context) (context.Context, error) { return UserInfoHasAccessToNNamespaces(ctx, 1) })
 	ctx.Step(`^User has access to a namespace$`,
 		func(ctx context.Context) (context.Context, error) { return UserHasAccessToNNamespaces(ctx, 1) })
-	ctx.Step(`^the ServiceAccount can retrieve the namespace$`, TheUserCanRetrieveTheNamespace)
 
 	// list
 	ctx.Step(`^ServiceAccount has access to "([^"]*)" namespaces$`, UserInfoHasAccessToNNamespaces)
@@ -132,35 +130,6 @@ func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (c
 				log.Printf("expected namespace %s not found in actual namespace list: %v", en.Name, ann.Items)
 				return false, nil
 			}
-		}
-		return true, nil
-	})
-}
-
-func TheUserCanRetrieveTheNamespace(ctx context.Context) (context.Context, error) {
-	run := tcontext.RunId(ctx)
-	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
-	if err != nil {
-		return ctx, err
-	}
-
-	return ctx, wait.PollUntilContextTimeout(ctx, 2*time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
-		n := corev1.Namespace{}
-		k := types.NamespacedName{Name: fmt.Sprintf("run-%s-0", run)}
-		if err := cli.Get(ctx, k, &n); err != nil {
-			log.Printf("error getting namespace %v: %v", k, err)
-			return false, nil
-		}
-
-		enn := tcontext.Namespaces(ctx)
-		if expected, actual := 1, len(enn); expected != actual {
-			log.Printf("expected %d namespaces, actual %d: %v", expected, actual, enn)
-			return false, nil
-		}
-
-		if expected, actual := n.Name, enn[0].Name; actual != expected {
-			log.Printf("expected namespace %s, actual %s", expected, actual)
-			return false, nil
 		}
 		return true, nil
 	})
