@@ -23,9 +23,12 @@ func isSynchAlreadyRunningErr(err error) bool {
 	return err != nil && errors.Is(err, SynchAlreadyRunningErr)
 }
 
-// applies changes to cache async
+var _ AccessCache = &SynchronizedAccessCache{}
+
+// SynchronizedAccessCache wraps an AccessCache adding logic for synchronizing its data.
 type SynchronizedAccessCache struct {
-	*AccessCache
+	AccessCache
+
 	request       chan struct{}
 	synchronizing atomic.Bool
 	once          sync.Once
@@ -38,13 +41,15 @@ type SynchronizedAccessCache struct {
 	resyncPeriod     time.Duration
 }
 
+// NewSynchronizedAccessCache builds a SynchronizedAccessCache.
+// The cache is meant to be started via the `Start` method.
 func NewSynchronizedAccessCache(
 	subjectLocator rbac.SubjectLocator,
 	namespaceLister client.Reader,
 	opts CacheSynchronizerOptions,
 ) *SynchronizedAccessCache {
 	return opts.Apply(&SynchronizedAccessCache{
-		AccessCache: NewAccessCache(),
+		AccessCache: NewAtomicListRestockAccessCache(),
 		request:     make(chan struct{}, 1),
 
 		subjectLocator:  subjectLocator,
@@ -52,6 +57,7 @@ func NewSynchronizedAccessCache(
 	})
 }
 
+// Synch recalculates the data to be stored in the cache and applies
 func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	if !s.synchronizing.CompareAndSwap(false, true) {
 		// already running a synch operation
@@ -65,7 +71,7 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 		return err
 	}
 
-	c := AccessData{}
+	c := map[rbacv1.Subject][]corev1.Namespace{}
 
 	// get subjects for each namespace
 	for _, ns := range nn.Items {
@@ -131,6 +137,9 @@ func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) [
 	return slices.Clip(ss)
 }
 
+// Request allows events to request to run a Synch operation.
+// Only one request is kept in memory. If a Synch operation has already been
+// requested - but still not processed, and a new request comes it will be discarded.
 func (s *SynchronizedAccessCache) Request() bool {
 	select {
 	case s.request <- struct{}{}:
@@ -142,6 +151,10 @@ func (s *SynchronizedAccessCache) Request() bool {
 	}
 }
 
+// Start runs two goroutines to keep the cache up-to-date.
+//
+// The former will enqueue requests to synch the cache by intervals of `resyncPeriod`.
+// The latter waits for requests to synch the cache and runs the Synch operation.
 func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 	s.once.Do(func() {
 		// run time based resync

@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// CacheSynchronizerOptions allows tune SynchronizedAccessCache's behavior
 type CacheSynchronizerOptions struct {
 	Logger           *slog.Logger
 	ResyncPeriod     time.Duration
@@ -21,6 +22,8 @@ var defaultCacheSynchronizerOptions = CacheSynchronizerOptions{
 	},
 }
 
+// Apply applies the provided options to the SynchronizedAccessCache.
+// It enforces defaults where values were not provided.
 func (opts *CacheSynchronizerOptions) Apply(s *SynchronizedAccessCache) *SynchronizedAccessCache {
 	s.resyncPeriod = cmp.Or(opts.ResyncPeriod, defaultCacheSynchronizerOptions.ResyncPeriod)
 

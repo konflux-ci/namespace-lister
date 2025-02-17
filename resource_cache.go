@@ -100,6 +100,7 @@ type cacheConfig struct {
 	namespacesLabelSector labels.Selector
 }
 
+// BuildAndStartResourceCache builds and starts a resource Cache.
 func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, error) {
 	// build scheme
 	s := runtime.NewScheme()

@@ -1,11 +1,8 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func NewDefaultRegistry() *prometheus.Registry {
@@ -124,21 +121,4 @@ func newMetrics(reg prometheus.Registerer) metrics {
 		responseSize:   responseSize,
 		inFlightGauge:  inFlightGauge,
 	}
-}
-
-func AddMetricsMiddleware(reg prometheus.Registerer, handler http.Handler) http.Handler {
-	if reg == nil {
-		return handler
-	}
-
-	m := newMetrics(reg)
-	return promhttp.InstrumentHandlerDuration(
-		m.requestTiming,
-		promhttp.InstrumentHandlerCounter(
-			m.requestCounter,
-			promhttp.InstrumentHandlerResponseSize(
-				m.responseSize,
-				promhttp.InstrumentHandlerInFlight(
-					m.inFlightGauge,
-					handler))))
 }

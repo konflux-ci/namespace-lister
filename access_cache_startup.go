@@ -15,7 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func buildAndStartAccessCache(ctx context.Context, resourceCache crcache.Cache) (*authcache.SynchronizedAccessCache, error) {
+// buildAndStartSynchronizedAccessCache builds a SynchronizedAccessCache.
+// It registers handlers on events on resources that will trigger an AccessCache synchronization.
+func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crcache.Cache) (*authcache.SynchronizedAccessCache, error) {
 	aur := &CRAuthRetriever{resourceCache, ctx, getLoggerFromContext(ctx)}
 	sae := rbac.NewSubjectAccessEvaluator(aur, aur, aur, aur, "")
 	synchCache := authcache.NewSynchronizedAccessCache(
@@ -57,6 +59,8 @@ func buildAndStartAccessCache(ctx context.Context, resourceCache crcache.Cache) 
 	return synchCache, nil
 }
 
+// getResyncPeriodFromEnvOrZero retrieves AccessCache's ResyncPeriod from environment variables.
+// If the environment variable is not set it returns the zero value.
 func getResyncPeriodFromEnvOrZero(ctx context.Context) time.Duration {
 	var zero time.Duration
 	rps, ok := os.LookupEnv(EnvCacheResyncPeriod)
