@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
@@ -63,6 +64,8 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create resources
 		err, ans, uns = createResources(ctx, c, username, 300, 800, 1200)
 		utilruntime.Must(err)
+
+		log.Println("allowed namespaces", len(ans))
 	})
 
 	BeforeEach(func(ctx context.Context) {
@@ -208,10 +211,10 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create cache, namespacelister, and handler
 		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartAccessCache(ctx, cache)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, cache)
 		utilruntime.Must(err)
 
-		nl := NewNamespaceListerForSubject(c)
+		nl := NewSubjectNamespaceLister(c)
 		lnh := NewListNamespacesHandler(nl)
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
@@ -263,7 +266,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create resourceCache, namespacelister, and handler
 		resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartAccessCache(ctx, resourceCache)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache)
 		utilruntime.Must(err)
 
 		// check cache is correctly populated with
@@ -311,9 +314,15 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 // As an example, if we add a string before the data field, cacheDataSkew will become:
 //
 //	cacheDataSkew := uintptr(unsafe.Sizeof(new(string)))
-func unsafeGetPrivateCacheData(accessCache *cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
+func unsafeGetPrivateCacheData(accessCache cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
+	// cast to AtomicListRestockCache
+	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace])
+	if !ok {
+		panic(fmt.Sprintf("expected AtomicListRestockCache, actual %T", accessCache))
+	}
+
 	// create an unsafe.Pointer to the AccessCache
-	cacheBasePtr := unsafe.Pointer(accessCache)
+	cacheBasePtr := unsafe.Pointer(alrc)
 	// calculate the cacheDataSkew of the AccessCache's data from the AccessCache base
 	cacheDataSkew := uintptr(0)
 	// create a pointer to cache's data location

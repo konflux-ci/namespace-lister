@@ -13,16 +13,13 @@ import (
 
 var _ NamespaceLister = &namespaceLister{}
 
-type NamespaceLister interface {
-	ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error)
-}
-
 type namespaceLister struct {
 	client.Reader
 
 	authorizer *rbac.RBACAuthorizer
 }
 
+// NewNamespaceListerWithAuthorizer builds a NamespaceLister that uses an Authorizer to calculate user access in-time
 func NewNamespaceListerWithAuthorizer(reader client.Reader, authorizer *rbac.RBACAuthorizer) NamespaceLister {
 	return &namespaceLister{
 		Reader:     reader,
@@ -30,6 +27,7 @@ func NewNamespaceListerWithAuthorizer(reader client.Reader, authorizer *rbac.RBA
 	}
 }
 
+// ListNamespaces calculates the namespaces the provided user can access
 func (c *namespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 	l := getLoggerFromContext(ctx)
 

@@ -19,12 +19,14 @@ type subjectNamespaceLister struct {
 	subjectNamespacesLister SubjectNamespacesLister
 }
 
-func NewNamespaceListerForSubject(subjectNamespacesLister SubjectNamespacesLister) NamespaceLister {
+// NewSubjectNamespaceLister builds a SubjectNamespacesLister
+func NewSubjectNamespaceLister(subjectNamespacesLister SubjectNamespacesLister) NamespaceLister {
 	return &subjectNamespaceLister{
 		subjectNamespacesLister: subjectNamespacesLister,
 	}
 }
 
+// ListNamespaces retrieves the namespaces the provided user can access from a cache calculated ahead of time
 func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
 	sub := c.parseUsername(username)
 	nn := c.subjectNamespacesLister.List(sub)
