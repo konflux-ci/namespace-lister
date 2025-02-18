@@ -36,3 +36,17 @@ func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
 	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
 	return arest.BuildClient(cfg)
 }
+
+func buildUnauthenticatedUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
+	// build impersonating client
+	cfg, err := arest.NewDefaultClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// the client should be unauthenticated,
+	// so skip any impersonation here
+
+	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
+	return arest.BuildClient(cfg)
+}
