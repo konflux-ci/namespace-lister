@@ -88,13 +88,13 @@ func run(l *slog.Logger) error {
 
 	// create access cache
 	l.Info("creating access cache")
-	accessCache, err := buildAndStartAccessCache(ctx, resourceCache)
+	accessCache, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache)
 	if err != nil {
 		return err
 	}
 
 	// create the namespace lister
-	nsl := NewNamespaceListerForSubject(accessCache)
+	nsl := NewSubjectNamespaceLister(accessCache)
 
 	// build and start http metrics server
 	if enableMetrics {

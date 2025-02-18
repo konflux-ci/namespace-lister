@@ -49,7 +49,7 @@ var _ = Describe("Subjectnamespaceslister", func() {
 			Times(1)
 
 		// given
-		nl := namespacelister.NewNamespaceListerForSubject(subjectNamespacesLister)
+		nl := namespacelister.NewSubjectNamespaceLister(subjectNamespacesLister)
 
 		// when
 		Expect(nl.ListNamespaces(ctx, "system:serviceaccount:mynamespace:myserviceaccount")).
@@ -77,7 +77,7 @@ var _ = Describe("Subjectnamespaceslister", func() {
 			Times(1)
 
 		// given
-		nl := namespacelister.NewNamespaceListerForSubject(subjectNamespacesLister)
+		nl := namespacelister.NewSubjectNamespaceLister(subjectNamespacesLister)
 
 		// when
 		Expect(nl.ListNamespaces(ctx, "myuser")).
