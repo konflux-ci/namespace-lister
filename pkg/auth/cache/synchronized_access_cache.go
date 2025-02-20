@@ -29,7 +29,7 @@ var _ AccessCache = &SynchronizedAccessCache{}
 type SynchronizedAccessCache struct {
 	AccessCache
 
-	request       chan struct{}
+	requested     chan struct{}
 	synchronizing atomic.Bool
 	once          sync.Once
 
@@ -39,6 +39,8 @@ type SynchronizedAccessCache struct {
 	logger           *slog.Logger
 	syncErrorHandler func(context.Context, error, *SynchronizedAccessCache)
 	resyncPeriod     time.Duration
+
+	metrics AccessCacheMetrics
 }
 
 // NewSynchronizedAccessCache builds a SynchronizedAccessCache.
@@ -50,7 +52,7 @@ func NewSynchronizedAccessCache(
 ) *SynchronizedAccessCache {
 	return opts.Apply(&SynchronizedAccessCache{
 		AccessCache: NewAtomicListRestockAccessCache(),
-		request:     make(chan struct{}, 1),
+		requested:   make(chan struct{}, 1),
 
 		subjectLocator:  subjectLocator,
 		namespaceLister: namespaceLister,
@@ -65,13 +67,23 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	}
 	defer s.synchronizing.Store(false)
 
+	// execute synch operation
+	cacheData, err := s.synch(ctx)
+
+	// collect metrics wrt to synch operation result
+	s.metrics.CollectSynchMetrics(cacheData, err)
+
+	return err
+}
+
+func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error) {
 	s.logger.Debug("start synchronization")
 	nn := corev1.NamespaceList{}
 	if err := s.namespaceLister.List(ctx, &nn); err != nil {
-		return err
+		return nil, err
 	}
 
-	c := map[rbacv1.Subject][]corev1.Namespace{}
+	c := AccessData{}
 
 	// get subjects for each namespace
 	for _, ns := range nn.Items {
@@ -105,7 +117,7 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	s.AccessCache.Restock(&c)
 
 	s.logger.Debug("cache restocked")
-	return nil
+	return c, nil
 }
 
 func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
@@ -140,9 +152,19 @@ func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) [
 // Request allows events to request to run a Synch operation.
 // Only one request is kept in memory. If a Synch operation has already been
 // requested - but still not processed, and a new request comes it will be discarded.
-func (s *SynchronizedAccessCache) Request() bool {
+func (s *SynchronizedAccessCache) Request(event Event) bool {
+	// request to synchronize the cache
+	queued := s.request()
+
+	// collect metrics on event and request
+	s.metrics.CollectRequestMetrics(event, queued)
+
+	return queued
+}
+
+func (s *SynchronizedAccessCache) request() bool {
 	select {
-	case s.request <- struct{}{}:
+	case s.requested <- struct{}{}:
 		// requested correctly
 		return true
 	default:
@@ -166,8 +188,8 @@ func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 					s.logger.Info("terminating time-based cache synchronization: context done")
 					return
 				case <-time.After(s.resyncPeriod):
-					ok := s.Request()
-					s.logger.Debug("time-based cache synchronization request made", "queued", ok)
+					queued := s.Request(timeTriggeredEvent)
+					s.logger.Debug("time-based cache synchronization request made", "queued", queued)
 				}
 			}
 		}()
@@ -181,7 +203,7 @@ func (s *SynchronizedAccessCache) Start(ctx context.Context) {
 					s.logger.Info("terminating cache synchronization goroutine: context done")
 					return
 
-				case <-s.request:
+				case <-s.requested:
 					// a new request is present
 					s.logger.Debug("start requested cache synchronization")
 					if err := s.Synch(ctx); isSynchAlreadyRunningErr(err) {

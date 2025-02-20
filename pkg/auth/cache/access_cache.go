@@ -13,10 +13,10 @@ type AccessCache interface {
 	// List lists all the namespaces a subject has access to
 	List(subject rbacv1.Subject) []corev1.Namespace
 	// Restock updates the data stored in the cache
-	Restock(data *map[rbacv1.Subject][]corev1.Namespace)
+	Restock(data *AccessData)
 }
 
 // NewAtomicListRestockAccessCache builds an AccessCache leveraging on the AtomicListRestockCache
 func NewAtomicListRestockAccessCache() AccessCache {
-	return newAtomicListRestockCache[rbacv1.Subject, []corev1.Namespace]()
+	return newAtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, AccessData]()
 }

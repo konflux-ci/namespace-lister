@@ -11,7 +11,6 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
-	"github.com/prometheus/client_golang/prometheus"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -55,7 +54,7 @@ func run(l *slog.Logger) error {
 	flag.StringVar(&metricsAddress, "metrics-address", ":9100", "metrics server address.")
 	flag.Parse()
 
-	var reg *prometheus.Registry
+	reg := NewDefaultRegistry()
 
 	// get config
 	cfg := ctrl.GetConfigOrDie()
@@ -88,7 +87,7 @@ func run(l *slog.Logger) error {
 
 	// create access cache
 	l.Info("creating access cache")
-	accessCache, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache)
+	accessCache, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache, reg)
 	if err != nil {
 		return err
 	}
@@ -98,7 +97,6 @@ func run(l *slog.Logger) error {
 
 	// build and start http metrics server
 	if enableMetrics {
-		reg = NewDefaultRegistry()
 		l.Info("building metrics server")
 		ms := NewMetricsServer(metricsAddress, reg).
 			WithTLS(enableTLS).
