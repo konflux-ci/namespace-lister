@@ -211,7 +211,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create cache, namespacelister, and handler
 		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartSynchronizedAccessCache(ctx, cache)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, cache, nil)
 		utilruntime.Must(err)
 
 		nl := NewSubjectNamespaceLister(c)
@@ -266,7 +266,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create resourceCache, namespacelister, and handler
 		resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache, nil)
 		utilruntime.Must(err)
 
 		// check cache is correctly populated with
@@ -314,9 +314,11 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 // As an example, if we add a string before the data field, cacheDataSkew will become:
 //
 //	cacheDataSkew := uintptr(unsafe.Sizeof(new(string)))
+//
+// TODO(@filariow): use cache metrics instead of this unsafe function
 func unsafeGetPrivateCacheData(accessCache cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
 	// cast to AtomicListRestockCache
-	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace])
+	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace, cache.AccessData])
 	if !ok {
 		panic(fmt.Sprintf("expected AtomicListRestockCache, actual %T", accessCache))
 	}
