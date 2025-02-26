@@ -2,7 +2,6 @@ package cache
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"k8s.io/apimachinery/pkg/api/meta"
 )
 
 const (
@@ -89,11 +88,6 @@ func NewAccessCacheMetrics() AccessCacheMetrics {
 			Help:      "synchronization requests triggered by events on watched resources",
 		}, []string{
 			"status",
-			"event_type",
-			"resource_apiversion",
-			"resource_kind",
-			"resource_name",
-			"resource_namespace",
 		}),
 	}
 }
@@ -124,7 +118,7 @@ func (m *accessCacheMetrics) CollectRequestMetrics(event Event, queued bool) {
 	case timeTriggeredEvent:
 		m.collectTimeTriggeredRequestMetrics(status)
 	default:
-		m.collectResourceEventRequestMetrics(event, status)
+		m.collectResourceEventRequestMetrics(status)
 	}
 }
 
@@ -139,28 +133,9 @@ func (m *accessCacheMetrics) collectTimeTriggeredRequestMetrics(status string) {
 	m.timeRequestsGauge.With(prometheus.Labels{"status": status}).Inc()
 }
 
-func (m *accessCacheMetrics) collectResourceEventRequestMetrics(event Event, status string) {
-	// set default labels
-	labels := prometheus.Labels{
-		"status":              status,
-		"event_type":          string(event.Type),
-		"resource_apiversion": "",
-		"resource_kind":       "",
-		"resource_name":       "",
-		"resource_namespace":  "",
-	}
-
-	// enrich metrics with Object's GroupVersionKind
-	if objType, err := meta.TypeAccessor(event.Object); err == nil {
-		labels["resource_apiversion"] = objType.GetAPIVersion()
-		labels["resource_kind"] = objType.GetKind()
-	}
-
-	// enrich metrics with Object's Meta
-	if accessor, err := meta.Accessor(event.Object); err == nil {
-		labels["resource_name"] = accessor.GetName()
-		labels["resource_namespace"] = accessor.GetNamespace()
-	}
+func (m *accessCacheMetrics) collectResourceEventRequestMetrics(status string) {
+	// set labels
+	labels := prometheus.Labels{"status": status}
 
 	// increment the number of requests triggered by events on resources
 	m.resourceRequestsGauge.With(labels).Inc()

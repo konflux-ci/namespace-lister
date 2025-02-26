@@ -147,7 +147,7 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 	func(actualEvent cache.Event, expectedApiVersion, expectedKind, expectedName, expectedNamespace string) {
 		metadata := `# HELP namespace_lister_accesscache_resource_requests_total synchronization requests triggered by events on watched resources
 # TYPE namespace_lister_accesscache_resource_requests_total counter`
-		entriesFmt := `namespace_lister_accesscache_resource_requests_total{event_type="%s",resource_apiversion="%s",resource_kind="%s",resource_name="%s",resource_namespace="%s",status="%s"} 1`
+		entriesFmt := `namespace_lister_accesscache_resource_requests_total{status="%s"} 1`
 
 		var metrics cache.AccessCacheMetrics
 
@@ -162,8 +162,7 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 			// then
 			Expect(
 				testutil.CollectAndCompare(metrics,
-					metricsFmt(metadata,
-						entriesFmt, actualEvent.Type, expectedApiVersion, expectedKind, expectedName, expectedNamespace, cache.StatusQueuedLabel),
+					metricsFmt(metadata, entriesFmt, cache.StatusQueuedLabel),
 					resourcesRequestsMetricFullname)).
 				To(Succeed())
 		})
@@ -175,8 +174,7 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 			// then
 			Expect(
 				testutil.CollectAndCompare(metrics,
-					metricsFmt(metadata,
-						entriesFmt, actualEvent.Type, expectedApiVersion, expectedKind, expectedName, expectedNamespace, cache.StatusSkippedLabel),
+					metricsFmt(metadata, entriesFmt, cache.StatusSkippedLabel),
 					resourcesRequestsMetricFullname)).
 				To(Succeed())
 		})
@@ -203,25 +201,4 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 		},
 		Type: cache.ResourceDeletedEventType,
 	}, "v1", "Namespace", "myns", ""),
-	Entry("role add event", cache.Event{
-		Object: &rbacv1.Role{
-			ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: "myns"},
-			TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.SchemeGroupVersion.String()},
-		},
-		Type: cache.ResourceAddedEventType,
-	}, rbacv1.SchemeGroupVersion.String(), "RoleBinding", "myrole", "myns"),
-	Entry("role update event", cache.Event{
-		Object: &rbacv1.Role{
-			ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: "myns"},
-			TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.SchemeGroupVersion.String()},
-		},
-		Type: cache.ResourceUpdatedEventType,
-	}, rbacv1.SchemeGroupVersion.String(), "RoleBinding", "myrole", "myns"),
-	Entry("role deleted event", cache.Event{
-		Object: &rbacv1.Role{
-			ObjectMeta: metav1.ObjectMeta{Name: "myrole", Namespace: "myns"},
-			TypeMeta:   metav1.TypeMeta{Kind: "RoleBinding", APIVersion: rbacv1.SchemeGroupVersion.String()},
-		},
-		Type: cache.ResourceDeletedEventType,
-	}, rbacv1.SchemeGroupVersion.String(), "RoleBinding", "myrole", "myns"),
 )
