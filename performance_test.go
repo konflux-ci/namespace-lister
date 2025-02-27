@@ -11,12 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/konflux-ci/namespace-lister/pkg/metricsutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gmeasure"
 	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -272,11 +271,20 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		utilruntime.Must(err)
 
 		// check cache is correctly populated with
-		// more than 5000 subjects
-		// and more than 10000 total namespaces
-		samples, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, &dto.MetricFamily{Name: ptr("subjects")})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(len(samples)).To(BeNumerically(">", 5000))
+		// more than 5500 subjects
+		{
+			vec, err := metricsutil.GetVector(registry, metricsutil.SubjectsMetricFullname)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(vec).To(HaveLen(1))
+			Expect(vec[0].Value).To(BeNumerically(">", model.SampleValue(5500)))
+		}
+		// and more than 9000 (subject,namespace) pairs
+		{
+			vec, err := metricsutil.GetVector(registry, metricsutil.SubjectNamespacePairsMetricFullname)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(vec).To(HaveLen(1))
+			Expect(vec[0].Value).To(BeNumerically(">", model.SampleValue(9000)))
+		}
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
