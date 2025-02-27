@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"slices"
@@ -116,8 +117,39 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 	// restock the cache
 	s.AccessCache.Restock(&c)
 
-	s.logger.Debug("cache restocked")
+	s.logDumpCacheData(ctx, slog.LevelDebug, c)
 	return c, nil
+}
+
+func (s *SynchronizedAccessCache) logDumpCacheData(ctx context.Context, level slog.Level, c AccessData) {
+	if !s.logger.Enabled(ctx, level) {
+		return
+	}
+
+	// calculate subject-namespace pairs dump
+	snp, snt := 0, make(map[string][]string, len(c))
+	for k, v := range c {
+		snp += len(v)
+
+		// extract namespace names
+		nn := make([]string, len(v))
+		for i, n := range v {
+			nn[i] = n.Name
+		}
+		snt[k.String()] = nn
+	}
+
+	// log the line
+	args := []slog.Attr{
+		slog.Int("subjects", len(c)),
+		slog.Int("subject-namespace pairs", snp),
+	}
+	if jsnt, err := json.Marshal(snt); err == nil {
+		args = append(args, slog.String("dump-json", string(jsnt)))
+	} else {
+		args = append(args, slog.Any("dump", snt))
+	}
+	s.logger.LogAttrs(ctx, level, "cache restocked", args...)
 }
 
 func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
