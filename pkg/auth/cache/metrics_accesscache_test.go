@@ -3,13 +3,11 @@ package cache_test
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -17,34 +15,7 @@ import (
 
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache/mocks"
-)
-
-const (
-	resourcesRequestsMetricFullname     = "namespace_lister_accesscache_resource_requests_total"
-	timeRequestsMetricFullname          = "namespace_lister_accesscache_time_requests_total"
-	syncMetricFullname                  = "namespace_lister_accesscache_synch_op_total"
-	subjectNamespacePairsMetricFullname = "namespace_lister_accesscache_subject_namespace_pairs"
-	subjectsMetricFullname              = "namespace_lister_accesscache_subjects"
-
-	metadataSynchOp = `# HELP namespace_lister_accesscache_synch_op_total synchronization operations
-# TYPE namespace_lister_accesscache_synch_op_total counter`
-	metadataSubjects = `# HELP namespace_lister_accesscache_subjects Subjects in the cache
-# TYPE namespace_lister_accesscache_subjects gauge`
-	metadataSubjectNamespacePairs = `# HELP namespace_lister_accesscache_subject_namespace_pairs (Subject, Namespace) pairs in the cache
-# TYPE namespace_lister_accesscache_subject_namespace_pairs gauge`
-
-	entriesSynchOpCompleted = `
-namespace_lister_accesscache_synch_op_total{error="",status="completed"} 1
-`
-	entriesSynchOpFailed = `
-namespace_lister_accesscache_synch_op_total{error="err",status="failed"} 1
-`
-	entriesSubjectsFmt = `
-namespace_lister_accesscache_subjects %d
-`
-	entriesSubjectNamespacePairsFmt = `
-namespace_lister_accesscache_subject_namespace_pairs %d
-`
+	"github.com/konflux-ci/namespace-lister/pkg/metricsutil"
 )
 
 var _ = Describe("MetricsAccessCache/FailedSynch", func() {
@@ -59,17 +30,14 @@ var _ = Describe("MetricsAccessCache/FailedSynch", func() {
 		metrics.CollectSynchMetrics(cache.AccessData{}, errors.New("err"))
 
 		// then
-		Expect(
-			testutil.CollectAndCompare(metrics, strings.NewReader(metadataSynchOp+entriesSynchOpFailed), syncMetricFullname)).
-			To(Succeed())
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SyncMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
+		Expect(vec[0].Metric["status"]).To(Equal(model.LabelValue("failed")))
+		Expect(vec[0].Metric["error"]).To(Equal(model.LabelValue("err")))
 	})
 })
-
-func metricsFmt(metadata, entriesFmt string, entriesArgs ...interface{}) *strings.Reader {
-	entries := fmt.Sprintf(entriesFmt, entriesArgs...)
-	all := fmt.Sprintf("%s\n%s\n", metadata, entries)
-	return strings.NewReader(all)
-}
 
 var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subs, subNsPairs int) {
 	// given
@@ -79,21 +47,28 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 	metrics.CollectSynchMetrics(data, err)
 
 	// then
-	Expect(
-		testutil.CollectAndCompare(metrics, metricsFmt(metadataSynchOp, entriesSynchOpCompleted), syncMetricFullname)).
-		To(Succeed())
-	Expect(
-		testutil.CollectAndCompare(
-			metrics,
-			metricsFmt(metadataSubjectNamespacePairs, entriesSubjectNamespacePairsFmt, subNsPairs),
-			subjectNamespacePairsMetricFullname)).
-		To(Succeed())
-	Expect(
-		testutil.CollectAndCompare(
-			metrics,
-			metricsFmt(metadataSubjects, entriesSubjectsFmt, subs),
-			subjectsMetricFullname)).
-		To(Succeed())
+	// check that the synch operation has been executed
+	{
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SyncMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
+		Expect(vec[0].Metric["status"]).To(Equal(model.LabelValue("completed")))
+	}
+	// check we have registered the correct amount of subjects
+	{
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectsMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(subs)))
+	}
+	// check we have registered the correct amount of (subject,namespace) pairs
+	{
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectNamespacePairsMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(subNsPairs)))
+	}
 },
 	Entry("nil data", nil, nil, 0, 0),
 	Entry("empty data", cache.AccessData{}, nil, 0, 0),
@@ -120,11 +95,6 @@ var _ = Describe("MetricsAccessCache/TimeRequests", func() {
 	})
 
 	It("collects time-triggered request metrics", func(ctx context.Context) {
-		metadata := `# HELP namespace_lister_accesscache_time_requests_total synchronization requests triggered when resync period elapses
-# TYPE namespace_lister_accesscache_time_requests_total counter`
-		entries := `
-namespace_lister_accesscache_time_requests_total{status="queued"} 1
-`
 		nl := mocks.NewMockClientReader(ctrl)
 		nl.EXPECT().List(ctx, gomock.Any()).Return(nil).Times(1)
 
@@ -137,18 +107,16 @@ namespace_lister_accesscache_time_requests_total{status="queued"} 1
 		time.Sleep(150 * time.Millisecond)
 
 		// then
-		Expect(
-			testutil.CollectAndCompare(metrics, strings.NewReader(metadata+entries), timeRequestsMetricFullname)).
-			To(Succeed())
+		vec, err := metricsutil.GetVector(metrics, metricsutil.TimeRequestsMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
+		Expect(vec[0].Metric["status"]).To(Equal(model.LabelValue("queued")))
 	})
 })
 
 var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
-	func(actualEvent cache.Event, expectedApiVersion, expectedKind, expectedName, expectedNamespace string) {
-		metadata := `# HELP namespace_lister_accesscache_resource_requests_total synchronization requests triggered by events on watched resources
-# TYPE namespace_lister_accesscache_resource_requests_total counter`
-		entriesFmt := `namespace_lister_accesscache_resource_requests_total{status="%s"} 1`
-
+	func(actualEvent cache.Event) {
 		var metrics cache.AccessCacheMetrics
 
 		BeforeEach(func() {
@@ -160,11 +128,11 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 			metrics.CollectRequestMetrics(actualEvent, true)
 
 			// then
-			Expect(
-				testutil.CollectAndCompare(metrics,
-					metricsFmt(metadata, entriesFmt, cache.StatusQueuedLabel),
-					resourcesRequestsMetricFullname)).
-				To(Succeed())
+			vec, err := metricsutil.GetVector(metrics, metricsutil.ResourcesRequestsMetricFullname)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(vec).To(HaveLen(1))
+			Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
+			Expect(vec[0].Metric["status"]).To(Equal(model.LabelValue(cache.StatusQueuedLabel)))
 		})
 
 		It("collects request metrics for skipped request", func() {
@@ -172,33 +140,33 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 			metrics.CollectRequestMetrics(actualEvent, false)
 
 			// then
-			Expect(
-				testutil.CollectAndCompare(metrics,
-					metricsFmt(metadata, entriesFmt, cache.StatusSkippedLabel),
-					resourcesRequestsMetricFullname)).
-				To(Succeed())
+			vec, err := metricsutil.GetVector(metrics, metricsutil.ResourcesRequestsMetricFullname)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(vec).To(HaveLen(1))
+			Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
+			Expect(vec[0].Metric["status"]).To(Equal(model.LabelValue(cache.StatusSkippedLabel)))
 		})
 	},
-	Entry("nil object event", cache.Event{Type: cache.ResourceAddedEventType}, "", "", "", ""),
+	Entry("nil object event", cache.Event{Type: cache.ResourceAddedEventType}),
 	Entry("namespace add event", cache.Event{
 		Object: &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "myns"},
 			TypeMeta:   metav1.TypeMeta{Kind: "Namespace", APIVersion: "v1"},
 		},
 		Type: cache.ResourceAddedEventType,
-	}, "v1", "Namespace", "myns", ""),
+	}),
 	Entry("namespace update event", cache.Event{
 		Object: &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "myns"},
 			TypeMeta:   metav1.TypeMeta{Kind: "Namespace", APIVersion: "v1"},
 		},
 		Type: cache.ResourceUpdatedEventType,
-	}, "v1", "Namespace", "myns", ""),
+	}),
 	Entry("namespace deleted event", cache.Event{
 		Object: &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "myns"},
 			TypeMeta:   metav1.TypeMeta{Kind: "Namespace", APIVersion: "v1"},
 		},
 		Type: cache.ResourceDeletedEventType,
-	}, "v1", "Namespace", "myns", ""),
+	}),
 )
