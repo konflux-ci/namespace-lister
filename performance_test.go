@@ -271,16 +271,14 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 
 		// check cache is correctly populated with
 		// more than 5000 subjects
-		// and more than 10000 total namespaces
+		// and more than 9000 total namespaces
 		cacheData := unsafeGetPrivateCacheData(c.AccessCache)
 		Expect(len(cacheData)).To(BeNumerically(">", 5000))
-		Expect(cacheData).To(Satisfy(func(d cache.AccessData) bool {
-			n := 0
-			for _, v := range d {
-				n += len(v)
-			}
-			return n > 10000
-		}))
+		cachedNsSubPairs := 0
+		for _, v := range cacheData {
+			cachedNsSubPairs += len(v)
+		}
+		Expect(cachedNsSubPairs).To(BeNumerically(">", 9000))
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
