@@ -127,16 +127,10 @@ func (s *SynchronizedAccessCache) logDumpCacheData(ctx context.Context, level sl
 	}
 
 	// calculate subject-namespace pairs dump
-	snp, snt := 0, make(map[string][]string, len(c))
+	snp, snt := 0, make(map[string]int, len(c))
 	for k, v := range c {
 		snp += len(v)
-
-		// extract namespace names
-		nn := make([]string, len(v))
-		for i, n := range v {
-			nn[i] = n.Name
-		}
-		snt[k.String()] = nn
+		snt[k.String()] = len(v)
 	}
 
 	// log the line
