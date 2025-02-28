@@ -20,13 +20,19 @@ import (
 
 var (
 	userSubject = rbacv1.Subject{
-		Kind:     "User",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.SchemeGroupVersion.Group,
+		Name:     "myuser",
+	}
+
+	groupSubject = rbacv1.Subject{
+		Kind:     rbacv1.GroupKind,
 		APIGroup: rbacv1.SchemeGroupVersion.Group,
 		Name:     "myuser",
 	}
 
 	serviceAccountSubject = rbacv1.Subject{
-		Kind:      "ServiceAccount",
+		Kind:      rbacv1.ServiceAccountKind,
 		Name:      "myserviceaccount",
 		Namespace: "mynamespace",
 	}
@@ -129,6 +135,26 @@ var _ = Describe("SynchronizedAccessCache", func() {
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
 		Expect(nsc.AccessCache.List(serviceAccountSubject)).To(BeEquivalentTo(namespaces))
+	})
+
+	It("doesn't cache Groups", func(ctx context.Context) {
+		namespaceLister := mocks.NewMockClientReader(ctrl)
+		namespaceLister.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nn *corev1.NamespaceList, opts ...client.ListOption) error {
+				(&corev1.NamespaceList{Items: namespaces}).DeepCopyInto(nn)
+				return nil
+			}).
+			Times(1)
+		subjectLocator.EXPECT().
+			AllowedSubjects(gomock.Any()).
+			Return([]rbacv1.Subject{groupSubject}, nil).
+			Times(1)
+
+		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
+
+		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
+		Expect(nsc.AccessCache.List(groupSubject)).To(BeEmpty())
 	})
 })
 
