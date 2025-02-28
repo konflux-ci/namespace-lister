@@ -105,6 +105,9 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 			s.logger.Debug("cache restocking: error caculating allowed subjects", "error", err)
 		}
 
+		// remove groups from list of subjects
+		ss = s.removeGroupSubjects(ss)
+
 		// remove duplicates from allowed subjects
 		ss = s.removeDuplicateSubjects(ss)
 
@@ -150,6 +153,24 @@ func (s *SynchronizedAccessCache) logDumpCacheData(ctx context.Context, level sl
 		args = append(args, slog.Any("dump", snt))
 	}
 	s.logger.LogAttrs(ctx, level, "cache restocked", args...)
+}
+
+// removeGroupSubjects removes the groups from the cached subjects.
+func (s *SynchronizedAccessCache) removeGroupSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
+	// pessimistic: reserve max capacity
+	nss := make([]rbacv1.Subject, 0, len(ss))
+
+	// copy all non-groups subjects
+	for _, s := range ss {
+		if s.APIGroup == rbacv1.GroupName && s.Kind == rbacv1.GroupKind {
+			continue
+		}
+
+		nss = append(nss, s)
+	}
+
+	// reduce capacity
+	return slices.Clip(nss)
 }
 
 func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
