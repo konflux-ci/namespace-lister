@@ -129,12 +129,6 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
 			},
-			&rbacv1.ClusterRoleBinding{}: {
-				Transform: mergeTransformFunc(
-					cache.TransformStripManagedFields(),
-					trimAnnotations(),
-				),
-			},
 			&rbacv1.RoleBinding{}: {
 				Transform: mergeTransformFunc(
 					cache.TransformStripManagedFields(),
