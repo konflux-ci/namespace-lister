@@ -21,11 +21,11 @@ import (
 )
 
 const (
-	resourcesRequestsMetricFullname     = "namespace_lister_accesscache_resource_requests_total"
-	timeRequestsMetricFullname          = "namespace_lister_accesscache_time_requests_total"
-	syncMetricFullname                  = "namespace_lister_accesscache_synch_op_total"
-	subjectNamespacePairsMetricFullname = "namespace_lister_accesscache_subject_namespace_pairs"
-	subjectsMetricFullname              = "namespace_lister_accesscache_subjects"
+	resourcesRequestsMetricFullname     string = "namespace_lister_accesscache_resource_requests_total"
+	timeRequestsMetricFullname          string = "namespace_lister_accesscache_time_requests_total"
+	syncMetricFullname                  string = "namespace_lister_accesscache_synch_op_total"
+	subjectNamespacePairsMetricFullname string = "namespace_lister_accesscache_subject_namespace_pairs"
+	subjectsMetricFullname              string = "namespace_lister_accesscache_subjects"
 )
 
 var _ = Describe("MetricsAccessCache/FailedSynch", func() {
