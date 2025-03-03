@@ -77,9 +77,10 @@ func getVector(metrics cache.AccessCacheMetrics, name string) (model.Vector, err
 	return expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mf)
 }
 
-var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subs, subNsPairs int) {
+var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subNsPairs int) {
 	// given
 	metrics := cache.NewAccessCacheMetrics()
+	subs := len(data)
 
 	// when
 	metrics.CollectSynchMetrics(data, err)
@@ -108,15 +109,15 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 		Expect(vec[0].Value).To(Equal(model.SampleValue(subNsPairs)))
 	}
 },
-	Entry("nil data", nil, nil, 0, 0),
-	Entry("empty data", cache.AccessData{}, nil, 0, 0),
+	Entry("nil data", nil, nil, 0),
+	Entry("empty data", cache.AccessData{}, nil, 0),
 	Entry("1 subject", cache.AccessData{
 		rbacv1.Subject{}: []corev1.Namespace{},
-	}, nil, 1, 0),
+	}, nil, 0),
 	Entry("2 subjects - 10 Namespaces", cache.AccessData{
 		rbacv1.Subject{Name: "1"}: []corev1.Namespace{{}, {}, {}, {}, {}},
 		rbacv1.Subject{Name: "2"}: []corev1.Namespace{{}, {}, {}, {}, {}},
-	}, nil, 2, 10),
+	}, nil, 10),
 )
 
 var _ = Describe("MetricsAccessCache/TimeRequests", func() {
