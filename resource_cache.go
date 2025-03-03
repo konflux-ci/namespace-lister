@@ -116,24 +116,18 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 		&corev1.Namespace{},
 		&rbacv1.RoleBinding{},
 		&rbacv1.ClusterRole{},
-		&rbacv1.ClusterRoleBinding{},
 		&rbacv1.Role{},
 	}
 	c, err := cache.New(cfg.restConfig, cache.Options{
 		Scheme:                       s,
 		DefaultUnsafeDisableDeepCopy: ptr(true),
+		ReaderFailOnMissingInformer:  true,
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
 				Label: cfg.namespacesLabelSector,
 			},
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
-			},
-			&rbacv1.ClusterRoleBinding{}: {
-				Transform: mergeTransformFunc(
-					cache.TransformStripManagedFields(),
-					trimAnnotations(),
-				),
 			},
 			&rbacv1.RoleBinding{}: {
 				Transform: mergeTransformFunc(

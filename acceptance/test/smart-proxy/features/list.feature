@@ -7,3 +7,8 @@ Feature: List Namespaces
   Scenario: user not authenticated
     Given User is not authenticated
     Then  the User request is rejected with unauthorized error
+
+  Scenario: ClusterRoleBindings are ignored
+    Given the ServiceAccount has Cluster-scoped get permission on namespaces
+    Given 10 tenant namespaces exist
+    Then the ServiceAccount retrieves no namespaces
