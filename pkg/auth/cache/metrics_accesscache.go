@@ -1,7 +1,10 @@
 package cache
 
 import (
+	"fmt"
+
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/api/rbac/v1alpha1"
 )
 
 const (
@@ -41,6 +44,9 @@ type accessCacheMetrics struct {
 	// synchGauge counts the number of cache synchronization
 	synchGauge *prometheus.CounterVec
 
+	// subjectCachedNamespaceCounter counts how many namespaces a user has in the cache.
+	subjectCachedNamespaceCounter *prometheus.GaugeVec
+
 	// resourceRequestsGauge counts the number of cache synchronization
 	// requested as a consequence of resource events
 	resourceRequestsGauge *prometheus.CounterVec
@@ -73,6 +79,12 @@ func NewAccessCacheMetrics() AccessCacheMetrics {
 			"status",
 			"error",
 		}),
+		subjectCachedNamespaceCounter: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "namespace_lister",
+			Subsystem: "accesscache",
+			Name:      "cached_namespace_count",
+			Help:      "number of cached namespaces",
+		}, []string{"apiGroup", "user"}),
 		timeRequestsGauge: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "namespace_lister",
 			Subsystem: "accesscache",
@@ -96,6 +108,8 @@ func (m *accessCacheMetrics) Collect(ch chan<- prometheus.Metric) {
 	m.resourceRequestsGauge.Collect(ch)
 	m.timeRequestsGauge.Collect(ch)
 
+	m.subjectCachedNamespaceCounter.Collect(ch)
+
 	m.subjectCounter.Collect(ch)
 	m.subjectNamespacePairsCounter.Collect(ch)
 	m.synchGauge.Collect(ch)
@@ -104,6 +118,8 @@ func (m *accessCacheMetrics) Collect(ch chan<- prometheus.Metric) {
 func (m *accessCacheMetrics) Describe(ch chan<- *prometheus.Desc) {
 	m.resourceRequestsGauge.Describe(ch)
 	m.timeRequestsGauge.Describe(ch)
+
+	m.subjectCachedNamespaceCounter.Describe(ch)
 
 	m.subjectCounter.Describe(ch)
 	m.subjectNamespacePairsCounter.Describe(ch)
@@ -154,10 +170,26 @@ func (s *accessCacheMetrics) CollectSynchMetrics(cacheData AccessData, err error
 	// update subjects in cache
 	s.subjectCounter.Set(float64(len(cacheData)))
 
+	// reset all metrics here, since we're just going to overwrite them.  This
+	// is necessary so that we don't have stale subjects in our metrics.
+	s.subjectCachedNamespaceCounter.Reset()
+
 	// update number of (subject, namespace) pairs
 	subNsPairCount := 0
-	for _, v := range cacheData {
+	for k, v := range cacheData {
 		subNsPairCount += len(v)
+
+		var user string
+		if k.Kind == v1alpha1.ServiceAccountKind {
+			user = fmt.Sprintf("system:serviceaccount:%s:%s", k.Name, k.Namespace)
+		} else {
+			user = k.Name
+		}
+		s.subjectCachedNamespaceCounter.With(
+			prometheus.Labels{
+				"apiGroup": k.APIGroup,
+				"user":     user,
+			}).Set(float64(len(v)))
 	}
 	s.subjectNamespacePairsCounter.Set(float64(subNsPairCount))
 }
