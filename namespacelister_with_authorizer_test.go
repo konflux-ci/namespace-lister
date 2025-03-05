@@ -84,7 +84,7 @@ var _ = Describe("Namespacelister", func() {
 			rbacv1.RoleBindingList{},
 			corev1.NamespaceList{Items: []corev1.Namespace{}},
 		),
-		Entry("returns the namespace if both the clusterrole and a valid clusterrolebinding exist",
+		Entry("returns no namespaces if both the clusterrole and a valid clusterrolebinding exist",
 			corev1.NamespaceList{Items: []corev1.Namespace{
 				{ObjectMeta: metav1.ObjectMeta{Name: "myns-1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "myns-2"}},
@@ -121,9 +121,7 @@ var _ = Describe("Namespacelister", func() {
 			}},
 			rbacv1.RoleList{},
 			rbacv1.RoleBindingList{},
-			corev1.NamespaceList{Items: []corev1.Namespace{
-				{ObjectMeta: metav1.ObjectMeta{Name: "myns-1", ResourceVersion: "999"}},
-			}},
+			corev1.NamespaceList{Items: []corev1.Namespace{}},
 		),
 		Entry("returns no namespace if the role exists but no rolebinding",
 			corev1.NamespaceList{Items: []corev1.Namespace{

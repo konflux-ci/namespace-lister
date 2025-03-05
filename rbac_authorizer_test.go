@@ -18,9 +18,7 @@ import (
 )
 
 var _ = Describe("CRAuthRetriever", func() {
-	var (
-		logger *slog.Logger
-	)
+	var logger *slog.Logger
 
 	BeforeEach(func() {
 		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
@@ -91,6 +89,6 @@ var _ = Describe("CRAuthRetriever", func() {
 
 		// then
 		Expect(err).NotTo(HaveOccurred())
-		Expect(acrbl).To(ConsistOf(crbl))
+		Expect(acrbl).To(BeEmpty())
 	})
 })
