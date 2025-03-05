@@ -13,6 +13,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
@@ -22,9 +23,12 @@ import (
 func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Given(`^ServiceAccount has access to "([^"]*)" namespaces$`, UserInfoHasAccessToNNamespaces)
 	ctx.Given(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
+	ctx.Given(`^the ServiceAccount has Cluster-scoped get permission on namespaces$`, UserInfoHasClusterScopedGetPermissionOnNamespaces)
+	ctx.Given(`^(\d+) tenant namespaces exist$`, NTenantNamespacesExist)
 
 	ctx.Then(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+	ctx.Then(`^the ServiceAccount retrieves no namespaces$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User request is rejected with unauthorized error$`, userRequestIsRejectedWithUnauthorizerError)
 }
 
@@ -42,11 +46,68 @@ func userRequestIsRejectedWithUnauthorizerError(ctx context.Context) (context.Co
 	return ctx, nil
 }
 
+func NTenantNamespacesExist(ctx context.Context, limit int) (context.Context, error) {
+	run := tcontext.RunId(ctx)
+	tn := time.Now().Unix()
+
+	cli, err := arest.BuildDefaultHostClient()
+	if err != nil {
+		return ctx, err
+	}
+
+	for i := range limit {
+		n := corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("run-%s-%d-%d", run, tn, i),
+				Labels: map[string]string{
+					"konflux.ci/type":           "user",
+					"namespace-lister/scope":    "acceptance-tests",
+					"namespace-lister/test-run": run,
+				},
+			},
+		}
+		if err := cli.Create(ctx, &n); err != nil {
+			return ctx, err
+		}
+	}
+
+	return ctx, nil
+}
+
+func UserInfoHasClusterScopedGetPermissionOnNamespaces(ctx context.Context) (context.Context, error) {
+	user := tcontext.User(ctx)
+
+	cli, err := arest.BuildDefaultHostClient()
+	if err != nil {
+		return ctx, err
+	}
+
+	// ensure the cluster role get-namespace exists
+	cr := &rbacv1.ClusterRole{}
+	if err := cli.Get(ctx, types.NamespacedName{Name: "namespace-get"}, cr); err != nil {
+		return ctx, err
+	}
+
+	cli.Create(ctx, &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("test-%s-get-namespaces", user.Name),
+		},
+		RoleRef: rbacv1.RoleRef{
+			Name:     cr.Name,
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+		},
+		Subjects: []rbacv1.Subject{user.AsSubject()},
+	})
+
+	return ctx, nil
+}
+
 func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
 	runId := tcontext.RunId(ctx)
 	username := fmt.Sprintf("user-%s", runId)
-	userId := tcontext.UserInfoFromUsername(username)
-	ctx = tcontext.WithUser(ctx, userId)
+	user := tcontext.UserInfoFromUsername(username)
+	ctx = tcontext.WithUser(ctx, user)
 	return UserInfoHasAccessToNNamespaces(ctx, number)
 }
 

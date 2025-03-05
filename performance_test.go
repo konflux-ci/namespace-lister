@@ -196,8 +196,8 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		httpListingStats := experiment.GetStats("http listing")
 		medianDuration := httpListingStats.DurationFor(gmeasure.StatMedian)
 
-		// and assert that it hasn't changed much from ~100ms
-		Expect(medianDuration).To(BeNumerically("~", 100*time.Millisecond, 70*time.Millisecond))
+		// and assert that it is below a threshold
+		Expect(medianDuration).To(BeNumerically("<", 100*time.Millisecond))
 	})
 
 	It("efficiently authorize on a huge environment with cached accesses", Serial, Label("perf"), func(ctx context.Context) {
@@ -270,15 +270,14 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		utilruntime.Must(err)
 
 		// check cache is correctly populated with
-		// more than 5000 subjects
-		// and more than 9000 total namespaces
+		// the expected number of subjects and namespaces
 		cacheData := unsafeGetPrivateCacheData(c.AccessCache)
-		Expect(len(cacheData)).To(BeNumerically(">", 5000))
+		Expect(cacheData).To(HaveLen(5501))
 		cachedNsSubPairs := 0
 		for _, v := range cacheData {
 			cachedNsSubPairs += len(v)
 		}
-		Expect(cachedNsSubPairs).To(BeNumerically(">", 9000))
+		Expect(cachedNsSubPairs).To(Equal(5800))
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
