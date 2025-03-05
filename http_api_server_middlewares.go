@@ -13,9 +13,9 @@ import (
 
 // addInjectLoggerMiddleware injects the provided logger in each request context.
 // It also generates and sets a correlation ID for each request.
-func addInjectLoggerMiddleware(l *slog.Logger, next http.Handler) http.HandlerFunc {
+func addInjectLoggerMiddleware(ol slog.Logger, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l = l.With("correlation-id", uuid.NewUUID())
+		l := ol.With("correlation-id", uuid.NewUUID())
 		ctx := setLoggerIntoContext(r.Context(), l)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}

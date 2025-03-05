@@ -29,7 +29,7 @@ func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceList
 	h := http.NewServeMux()
 	h.Handle(patternGetNamespaces,
 		addMetricsMiddleware(reg,
-			addInjectLoggerMiddleware(l,
+			addInjectLoggerMiddleware(*l,
 				addLogRequestMiddleware(
 					addAuthnMiddleware(ar,
 						NewListNamespacesHandler(lister))))))
