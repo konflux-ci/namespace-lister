@@ -20,7 +20,7 @@ It is possible to declare which Header to use via Environment Variables.
 
 The namespace-lister can defer the request authentication to the Kubernetes APIServer leveraging on the TokenAccessReview API.
 
-For this mechanism to work, the request is required to bear a token.
+For this mechanism to work, the request is required to have a bearer token.
 
 ## How it builds the reply
 
