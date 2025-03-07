@@ -21,11 +21,12 @@ import (
 )
 
 const (
-	resourcesRequestsMetricFullname     = "namespace_lister_accesscache_resource_requests_total"
-	timeRequestsMetricFullname          = "namespace_lister_accesscache_time_requests_total"
-	syncMetricFullname                  = "namespace_lister_accesscache_synch_op_total"
-	subjectNamespacePairsMetricFullname = "namespace_lister_accesscache_subject_namespace_pairs"
-	subjectsMetricFullname              = "namespace_lister_accesscache_subjects"
+	resourcesRequestsMetricFullname     string = "namespace_lister_accesscache_resource_requests_total"
+	timeRequestsMetricFullname          string = "namespace_lister_accesscache_time_requests_total"
+	syncMetricFullname                  string = "namespace_lister_accesscache_synch_op_total"
+	subjectCachedNamespaceCount         string = "namespace_lister_accesscache_cached_namespace_count"
+	subjectNamespacePairsMetricFullname string = "namespace_lister_accesscache_subject_namespace_pairs"
+	subjectsMetricFullname              string = "namespace_lister_accesscache_subjects"
 )
 
 var _ = Describe("MetricsAccessCache/FailedSynch", func() {
@@ -77,9 +78,10 @@ func getVector(metrics cache.AccessCacheMetrics, name string) (model.Vector, err
 	return expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mf)
 }
 
-var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subs, subNsPairs int) {
+var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subNsPairs int) {
 	// given
 	metrics := cache.NewAccessCacheMetrics()
+	subs := len(data)
 
 	// when
 	metrics.CollectSynchMetrics(data, err)
@@ -107,16 +109,33 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 		Expect(vec).To(HaveLen(1))
 		Expect(vec[0].Value).To(Equal(model.SampleValue(subNsPairs)))
 	}
+	// check that we report the correct number of namespaces cached for a user
+	if subs != 0 {
+		vec, err := getVector(metrics, subjectCachedNamespaceCount)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(subs))
+		for subject, namespaces := range data {
+			// find the metric that matches our subject
+			Expect(vec).To(ContainElement(Satisfy(func(sample *model.Sample) bool {
+				return sample.Metric["apiGroup"] == model.LabelValue(subject.APIGroup) &&
+					sample.Metric["user"] == model.LabelValue(subject.Name) &&
+					sample.Value == model.SampleValue(len(namespaces))
+			})))
+		}
+	} else {
+		_, err := getVector(metrics, subjectCachedNamespaceCount)
+		Expect(err).To(HaveOccurred())
+	}
 },
-	Entry("nil data", nil, nil, 0, 0),
-	Entry("empty data", cache.AccessData{}, nil, 0, 0),
+	Entry("nil data", nil, nil, 0),
+	Entry("empty data", cache.AccessData{}, nil, 0),
 	Entry("1 subject", cache.AccessData{
 		rbacv1.Subject{}: []corev1.Namespace{},
-	}, nil, 1, 0),
+	}, nil, 0),
 	Entry("2 subjects - 10 Namespaces", cache.AccessData{
 		rbacv1.Subject{Name: "1"}: []corev1.Namespace{{}, {}, {}, {}, {}},
 		rbacv1.Subject{Name: "2"}: []corev1.Namespace{{}, {}, {}, {}, {}},
-	}, nil, 2, 10),
+	}, nil, 10),
 )
 
 var _ = Describe("MetricsAccessCache/TimeRequests", func() {
