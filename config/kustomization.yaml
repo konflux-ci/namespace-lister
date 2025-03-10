@@ -7,6 +7,7 @@ resources:
 - metrics-service.yaml
 - namespace.yaml
 - rbac.yaml
+- network-policy-egress-allow-apiserver.yaml
 namespace: namespace-lister
 replacements:
 - source:
