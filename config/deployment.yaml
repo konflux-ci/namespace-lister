@@ -35,6 +35,18 @@ spec:
         #   value: "X-User"
         # - name: CACHE_NAMESPACE_LABELSELECTOR
         #   value: 'konflux.dev/type=user'
+        livenessProbe:
+          initialDelaySeconds: 1
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTPS
+        readinessProbe:
+          initialDelaySeconds: 1
+          httpGet:
+            path: /readyz
+            port: 8080
+            scheme: HTTPS
         resources:
           limits:
             cpu: 500m
