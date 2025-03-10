@@ -14,6 +14,8 @@ import (
 
 const (
 	patternGetNamespaces string = "GET /api/v1/namespaces"
+	patternHealthz       string = "GET /healthz"
+	patternReadyz        string = "GET /readyz"
 )
 
 // APIServer is an HTTP server that serves the List Namespace endpoint
@@ -21,6 +23,10 @@ type APIServer struct {
 	*http.Server
 	useTLS  bool
 	tlsOpts []func(*tls.Config)
+}
+
+func healthz(response http.ResponseWriter, _ *http.Request) {
+	response.WriteHeader(http.StatusOK)
 }
 
 // NewAPIServer builds a new APIServer
@@ -33,6 +39,9 @@ func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceList
 				addLogRequestMiddleware(
 					addAuthnMiddleware(ar,
 						NewListNamespacesHandler(lister))))))
+
+	h.HandleFunc(patternHealthz, healthz)
+	h.HandleFunc(patternReadyz, healthz)
 
 	return &APIServer{
 		Server: &http.Server{
