@@ -52,7 +52,7 @@ var _ = Describe("Subjectnamespaceslister", func() {
 		nl := namespacelister.NewSubjectNamespaceLister(subjectNamespacesLister)
 
 		// when
-		Expect(nl.ListNamespaces(ctx, "system:serviceaccount:mynamespace:myserviceaccount")).
+		Expect(nl.ListNamespaces(ctx, "system:serviceaccount:mynamespace:myserviceaccount", nil)).
 			// then
 			To(BeEquivalentTo(&corev1.NamespaceList{
 				TypeMeta: metav1.TypeMeta{
@@ -80,7 +80,7 @@ var _ = Describe("Subjectnamespaceslister", func() {
 		nl := namespacelister.NewSubjectNamespaceLister(subjectNamespacesLister)
 
 		// when
-		Expect(nl.ListNamespaces(ctx, "myuser")).
+		Expect(nl.ListNamespaces(ctx, "myuser", nil)).
 			// then
 			To(BeEquivalentTo(&corev1.NamespaceList{
 				TypeMeta: metav1.TypeMeta{

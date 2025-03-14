@@ -37,7 +37,7 @@ type accessCacheMetrics struct {
 	// subjectCounter counts the subjects in the cache
 	subjectCounter prometheus.Gauge
 	// subjectNamespacePairsCounter counts the (subject, namespace) pairs in the cache
-	subjectNamespacePairsCounter prometheus.Gauge
+	subjectNamespacePairsCounter *prometheus.GaugeVec
 	// synchGauge counts the number of cache synchronization
 	synchGauge *prometheus.CounterVec
 
@@ -58,12 +58,12 @@ func NewAccessCacheMetrics() AccessCacheMetrics {
 			Name:      "subjects",
 			Help:      "Subjects in the cache",
 		}),
-		subjectNamespacePairsCounter: prometheus.NewGauge(prometheus.GaugeOpts{
+		subjectNamespacePairsCounter: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: "namespace_lister",
 			Subsystem: "accesscache",
 			Name:      "subject_namespace_pairs",
 			Help:      "(Subject, Namespace) pairs in the cache",
-		}),
+		}, []string{"subject_gk"}),
 		synchGauge: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "namespace_lister",
 			Subsystem: "accesscache",
@@ -155,9 +155,15 @@ func (s *accessCacheMetrics) CollectSynchMetrics(cacheData AccessData, err error
 	s.subjectCounter.Set(float64(len(cacheData)))
 
 	// update number of (subject, namespace) pairs
-	subNsPairCount := 0
-	for _, v := range cacheData {
-		subNsPairCount += len(v)
+	gkNsPairCount := map[string]int{}
+	for s, v := range cacheData {
+		sgk := s.APIGroup + "/" + s.Kind
+		gkNsPairCount[sgk] = gkNsPairCount[sgk] + len(v)
 	}
-	s.subjectNamespacePairsCounter.Set(float64(subNsPairCount))
+
+	for gk, n := range gkNsPairCount {
+		s.subjectNamespacePairsCounter.
+			With(prometheus.Labels{"subject_gk": gk}).
+			Set(float64(n))
+	}
 }

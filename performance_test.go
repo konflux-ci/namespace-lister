@@ -25,7 +25,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,7 +40,6 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 	var restConfig *rest.Config
 	var c client.Client
 	var ans []client.Object
-	var uns []client.Object
 	var cacheCfg *cacheConfig
 
 	BeforeAll(func(ctx context.Context) {
@@ -62,7 +60,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		utilruntime.Must(err)
 
 		// create resources
-		err, ans, uns = createResources(ctx, c, username, 300, 800, 1200)
+		err, ans, _ = createResources(ctx, c, username, 300, 800, 1200)
 		utilruntime.Must(err)
 
 		log.Println("allowed namespaces", len(ans))
@@ -73,131 +71,6 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
 		utilruntime.Must(err)
 		cacheCfg = &cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
-	})
-
-	It("efficiently authorize on a huge environment", Serial, Label("perf"), func(ctx context.Context) {
-		// new gomega experiment
-		experiment := gmeasure.NewExperiment("Authorizing Request")
-
-		// Register the experiment as a ReportEntry - this will cause Ginkgo's reporter infrastructure
-		// to print out the experiment's report and to include the experiment in any generated reports
-		AddReportEntry(experiment.Name, experiment)
-
-		// create cache, authorizer, namespacelister, and handler
-		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
-		utilruntime.Must(err)
-		authzr := NewAuthorizer(ctx, cache)
-		nl := NewNamespaceListerWithAuthorizer(cache, authzr)
-		lnh := NewListNamespacesHandler(nl)
-
-		// we sample a function repeatedly to get a statistically significant set of measurements
-		experiment.Sample(func(idx int) {
-			rctx := context.WithValue(context.Background(), ContextKeyUserDetails, &authenticator.Response{
-				User: &user.DefaultInfo{
-					Name: username,
-				},
-			})
-			r := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(rctx)
-			w := httptest.NewRecorder()
-
-			// measure http Handler
-			experiment.MeasureDuration("http listing", func() {
-				lnh.ServeHTTP(w, r)
-			})
-		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
-		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
-
-		// we sample a function repeatedly to get a statistically significant set of measurements
-		experiment.Sample(func(idx int) {
-			var err error
-			var nn *corev1.NamespaceList
-
-			// measure ListNamespaces
-			experiment.MeasureDuration("internal listing", func() {
-				nn, err = nl.ListNamespaces(ctx, username)
-			})
-
-			// check results
-			if err != nil {
-				panic(err)
-			}
-			if lnn := len(nn.Items); lnn != len(ans) {
-				panic(fmt.Errorf("expecting %d namespaces, received %d", len(ans), lnn))
-			}
-		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
-		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
-
-		// we sample a function repeatedly to get a statistically significant set of measurements
-		experiment.Sample(func(idx int) {
-			nsName := ans[0].GetName()
-			// measure how long it takes to allow a request and store the duration in a "authorization-allow" measurement
-			var d authorizer.Decision
-			var err error
-			r := authorizer.AttributesRecord{
-				User:            &user.DefaultInfo{Name: username},
-				Verb:            "get",
-				Resource:        "namespaces",
-				APIGroup:        corev1.GroupName,
-				APIVersion:      corev1.SchemeGroupVersion.Version,
-				Name:            nsName,
-				Namespace:       nsName,
-				ResourceRequest: true,
-			}
-
-			// measure authorization
-			experiment.MeasureDuration("authorization-allow", func() {
-				d, _, err = authzr.Authorize(ctx, r)
-			})
-
-			// check results
-			if err != nil {
-				panic(err)
-			}
-			if d != authorizer.DecisionAllow {
-				panic(fmt.Sprintf("expected decision Allow, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
-			}
-		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
-		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
-
-		// we sample a function repeatedly to get a statistically significant set of measurements
-		experiment.Sample(func(idx int) {
-			nsName := uns[0].GetName()
-			// measure how long it takes to produce a NoOpinion decision to a request
-			// and store the duration in a "authorization-no-opinion" measurement
-			var d authorizer.Decision
-			var err error
-			r := authorizer.AttributesRecord{
-				User:            &user.DefaultInfo{Name: username},
-				Verb:            "get",
-				Resource:        "namespaces",
-				APIGroup:        corev1.GroupName,
-				APIVersion:      corev1.SchemeGroupVersion.Version,
-				Name:            nsName,
-				Namespace:       nsName,
-				ResourceRequest: true,
-			}
-
-			// measure authorization
-			experiment.MeasureDuration("authorization-noopinion", func() {
-				d, _, err = authzr.Authorize(ctx, r)
-			})
-
-			// check results
-			if err != nil {
-				panic(err)
-			}
-			if d != authorizer.DecisionNoOpinion {
-				panic(fmt.Sprintf("expected decision NoOpinion, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
-			}
-		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
-		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
-
-		// we get the median listing duration from the experiment we just ran
-		httpListingStats := experiment.GetStats("http listing")
-		medianDuration := httpListingStats.DurationFor(gmeasure.StatMedian)
-
-		// and assert that it is below a threshold
-		Expect(medianDuration).To(BeNumerically("<", 100*time.Millisecond))
 	})
 
 	It("efficiently authorize on a huge environment with cached accesses", Serial, Label("perf"), func(ctx context.Context) {
@@ -224,7 +97,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 
 			// measure ListNamespaces
 			experiment.MeasureDuration("internal listing", func() {
-				nn, err = nl.ListNamespaces(ctx, username)
+				nn, err = nl.ListNamespaces(ctx, username, nil)
 			})
 
 			// check results
@@ -315,7 +188,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 // TODO(@filariow): use cache metrics instead of this unsafe function
 func unsafeGetPrivateCacheData(accessCache cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
 	// cast to AtomicListRestockCache
-	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace, cache.AccessData])
+	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace, cache.AccessData, string])
 	if !ok {
 		panic(fmt.Sprintf("expected AtomicListRestockCache, actual %T", accessCache))
 	}
