@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log/slog"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +12,7 @@ import (
 
 // NewAuthorizer builds a new RBACAuthorizer
 func NewAuthorizer(ctx context.Context, cli client.Reader) *rbac.RBACAuthorizer {
-	aur := &CRAuthRetriever{cli, ctx, getLoggerFromContext(ctx)}
+	aur := &CRAuthRetriever{cli, ctx}
 	ra := rbac.New(aur, aur, aur, aur)
 	return ra
 }
@@ -23,15 +22,13 @@ func NewAuthorizer(ctx context.Context, cli client.Reader) *rbac.RBACAuthorizer 
 type CRAuthRetriever struct {
 	cli client.Reader
 	ctx context.Context
-	l   *slog.Logger
 }
 
 // NewCRAuthRetriever builds a new CRAuthRetriever
-func NewCRAuthRetriever(ctx context.Context, cli client.Reader, l *slog.Logger) *CRAuthRetriever {
+func NewCRAuthRetriever(ctx context.Context, cli client.Reader) *CRAuthRetriever {
 	return &CRAuthRetriever{
 		cli: cli,
 		ctx: ctx,
-		l:   l,
 	}
 }
 
@@ -46,7 +43,6 @@ func (r *CRAuthRetriever) GetRole(namespace, name string) (*rbacv1.Role, error) 
 	if err := r.cli.Get(r.ctx, client.ObjectKeyFromObject(&ro), &ro); err != nil {
 		return nil, err
 	}
-	r.l.Debug("getting role", "namespace", namespace, "name", name, "role", ro)
 	return &ro, nil
 }
 
@@ -56,7 +52,6 @@ func (r *CRAuthRetriever) ListRoleBindings(namespace string) ([]*rbacv1.RoleBind
 	if err := r.cli.List(r.ctx, &rbb, client.InNamespace(namespace)); err != nil {
 		return nil, err
 	}
-	r.l.Debug("listing rolebindings", "namespace", namespace, "rolebindings", rbb)
 
 	rbbp := make([]*rbacv1.RoleBinding, len(rbb.Items))
 	for i, rb := range rbb.Items {
@@ -75,7 +70,6 @@ func (r *CRAuthRetriever) GetClusterRole(name string) (*rbacv1.ClusterRole, erro
 	if err := r.cli.Get(r.ctx, client.ObjectKeyFromObject(&ro), &ro); err != nil {
 		return nil, err
 	}
-	r.l.Debug("getting clusterrole", "name", name, "clusterrole", ro)
 	return &ro, nil
 }
 

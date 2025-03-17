@@ -24,7 +24,7 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 		return nil, err
 	}
 
-	aur := &CRAuthRetriever{resourceCache, ctx, getLoggerFromContext(ctx)}
+	aur := &CRAuthRetriever{resourceCache, ctx}
 	sae := rbac.NewSubjectAccessEvaluator(aur, aur, aur, aur, "")
 	synchCache := authcache.NewSynchronizedAccessCache(
 		sae,
@@ -40,7 +40,6 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 		&corev1.Namespace{},
 		&rbacv1.RoleBinding{},
 		&rbacv1.ClusterRole{},
-		&rbacv1.ClusterRoleBinding{},
 		&rbacv1.Role{},
 	}
 	for _, o := range oo {
