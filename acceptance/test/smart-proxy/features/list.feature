@@ -4,7 +4,6 @@ Feature: List Namespaces
     Given User has access to "10" namespaces
     Then the User can retrieve only the namespaces they have access to
 
-  @wip
   Scenario: user with groups list namespaces
     Given User has access to "10" namespaces
     Given Group "mygroup" has access to "10" namespaces
