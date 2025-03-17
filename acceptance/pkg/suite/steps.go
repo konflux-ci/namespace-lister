@@ -25,7 +25,6 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Given(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
 	ctx.Given(`^Group "([^"]*)" has access to "([^"]*)" namespaces$`, GroupHasAccessToNNamespaces)
 	ctx.Given(`^User is part of group "([^"]*)"$`, UserIsPartOfGroup)
-
 	ctx.Given(`^the ServiceAccount has Cluster-scoped get permission on namespaces$`, UserInfoHasClusterScopedGetPermissionOnNamespaces)
 	ctx.Given(`^(\d+) tenant namespaces exist$`, NTenantNamespacesExist)
 
