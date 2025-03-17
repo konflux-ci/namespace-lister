@@ -29,7 +29,7 @@ func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	ud := r.Context().Value(ContextKeyUserDetails).(*authenticator.Response)
 
 	// retrieve projects as the user
-	nn, err := h.lister.ListNamespaces(r.Context(), ud.User.GetName(), nil)
+	nn, err := h.lister.ListNamespaces(r.Context(), ud.User.GetName(), ud.User.GetGroups())
 	if err != nil {
 		serr := &kerrors.StatusError{}
 		if errors.As(err, &serr) {
