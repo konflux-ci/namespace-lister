@@ -12,6 +12,7 @@ type UserInfo struct {
 	Name      string
 	APIGroup  string
 	Kind      string
+	Groups    []string
 }
 
 func UserInfoFromServiceAccount(sa corev1.ServiceAccount, tkn *authenticationv1.TokenRequest) UserInfo {
