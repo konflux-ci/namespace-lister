@@ -52,6 +52,7 @@ func addAuthnMiddleware(ar authenticator.Request, next http.Handler) http.Handle
 			// Inject authentication details into request context
 			ctx := r.Context()
 			authCtx := context.WithValue(ctx, ContextKeyUserDetails, rs)
+			getLoggerFromContext(r.Context()).With("user", rs).Debug("request authenticated")
 
 			// serve next request
 			next.ServeHTTP(w, r.WithContext(authCtx))
