@@ -69,11 +69,6 @@ func trimClusterRole() toolscache.TransformFunc {
 				return nil, fmt.Errorf("error caching ClusterRole: expected a ClusterRole received %T", i)
 			}
 
-			// can't define at this time if it will relate to namespaces, so let's keep it
-			if cr.AggregationRule != nil && cr.AggregationRule.ClusterRoleSelectors != nil {
-				return i, nil
-			}
-
 			cr.Rules = filterNamespacesRelatedPolicyRules(cr.Rules)
 			if len(cr.Rules) == 0 {
 				return nil, nil
