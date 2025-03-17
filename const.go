@@ -3,6 +3,7 @@ package main
 const (
 	EnvLogLevel          string = "LOG_LEVEL"
 	EnvUsernameHeader    string = "AUTH_USERNAME_HEADER"
+	EnvGroupsHeader      string = "AUTH_GROUPS_HEADER"
 	EnvAddress           string = "ADDRESS"
 	EnvCacheResyncPeriod string = "CACHE_RESYNC_PERIOD"
 

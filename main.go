@@ -61,8 +61,9 @@ func run(l *slog.Logger) error {
 
 	// build the request authenticator
 	ar, err := NewAuthenticator(AuthenticatorOptions{
-		Config: cfg,
-		Header: GetUsernameHeaderFromEnv(),
+		Config:         cfg,
+		UsernameHeader: GetUsernameHeaderFromEnv(),
+		GroupsHeader:   GetGroupsHeaderFromEnv(),
 	})
 	if err != nil {
 		return err
