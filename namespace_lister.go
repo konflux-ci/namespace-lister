@@ -8,5 +8,5 @@ import (
 
 // NamespaceLister represents a lister that returns the list of namespaces a user has direct access to
 type NamespaceLister interface {
-	ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error)
+	ListNamespaces(ctx context.Context, username string, groups []string) (*corev1.NamespaceList, error)
 }

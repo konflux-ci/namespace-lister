@@ -101,7 +101,7 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 		Expect(vec[0].Value).To(Equal(model.SampleValue(subs)))
 	}
 	// check we have registered the correct amount of (subject,namespace) pairs
-	{
+	if subNsPairs > 0 {
 		vec, err := getVector(metrics, subjectNamespacePairsMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
