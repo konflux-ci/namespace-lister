@@ -43,7 +43,7 @@ var _ = Describe("AuthCache", func() {
 		nn := c.List(sub)
 
 		// then
-		Expect(nn).To(BeEquivalentTo(enn))
+		Expect(nn).To(ConsistOf(enn))
 	})
 
 	It("matches more subjects with overlapping namespaces", func() {
@@ -60,7 +60,7 @@ var _ = Describe("AuthCache", func() {
 		nn := c.List(sub1, sub2)
 
 		// then
-		Expect(nn).To(BeEquivalentTo(enn))
+		Expect(nn).To(ConsistOf(enn))
 	})
 
 	It("matches more subjects with overlapping namespaces and different subject kinds", func() {
@@ -77,7 +77,7 @@ var _ = Describe("AuthCache", func() {
 		nn := c.List(sub1, sub2)
 
 		// then
-		Expect(nn).To(BeEquivalentTo(enn))
+		Expect(nn).To(ConsistOf(enn))
 	})
 
 	It("matches more subjects with non-overlapping namespaces", func() {
@@ -97,7 +97,7 @@ var _ = Describe("AuthCache", func() {
 
 		// then
 		expectedNn := append(nn1, nn2...)
-		Expect(nn).To(BeEquivalentTo(expectedNn))
+		Expect(nn).To(ConsistOf(expectedNn))
 	})
 
 	It("matches more subjects with non-overlapping namespaces and different subject kinds", func() {
@@ -117,6 +117,6 @@ var _ = Describe("AuthCache", func() {
 
 		// then
 		expectedNn := append(nn1, nn2...)
-		Expect(nn).To(BeEquivalentTo(expectedNn))
+		Expect(nn).To(ConsistOf(expectedNn))
 	})
 })
