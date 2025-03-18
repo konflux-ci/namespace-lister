@@ -7,9 +7,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -18,14 +15,7 @@ import (
 
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache/mocks"
-)
-
-const (
-	resourcesRequestsMetricFullname     = "namespace_lister_accesscache_resource_requests_total"
-	timeRequestsMetricFullname          = "namespace_lister_accesscache_time_requests_total"
-	syncMetricFullname                  = "namespace_lister_accesscache_synch_op_total"
-	subjectNamespacePairsMetricFullname = "namespace_lister_accesscache_subject_namespace_pairs"
-	subjectsMetricFullname              = "namespace_lister_accesscache_subjects"
+	"github.com/konflux-ci/namespace-lister/pkg/metricsutil"
 )
 
 var _ = Describe("MetricsAccessCache/FailedSynch", func() {
@@ -40,7 +30,7 @@ var _ = Describe("MetricsAccessCache/FailedSynch", func() {
 		metrics.CollectSynchMetrics(cache.AccessData{}, errors.New("err"))
 
 		// then
-		vec, err := getVector(metrics, syncMetricFullname)
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SyncMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
 		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
@@ -48,34 +38,6 @@ var _ = Describe("MetricsAccessCache/FailedSynch", func() {
 		Expect(vec[0].Metric["error"]).To(Equal(model.LabelValue("err")))
 	})
 })
-
-func getMetricFamily(metrics cache.AccessCacheMetrics, name string) (*dto.MetricFamily, error) {
-	reg := prometheus.NewRegistry()
-	if err := reg.Register(metrics); err != nil {
-		return nil, err
-	}
-
-	mff, err := reg.Gather()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, mf := range mff {
-		if mf.GetName() == name {
-			return mf, nil
-		}
-	}
-	return nil, errors.New("metric family not found")
-}
-
-func getVector(metrics cache.AccessCacheMetrics, name string) (model.Vector, error) {
-	mf, err := getMetricFamily(metrics, name)
-	if err != nil {
-		return nil, err
-	}
-
-	return expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mf)
-}
 
 var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subs, subNsPairs int) {
 	// given
@@ -87,7 +49,7 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 	// then
 	// check that the synch operation has been executed
 	{
-		vec, err := getVector(metrics, syncMetricFullname)
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SyncMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
 		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
@@ -95,14 +57,14 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 	}
 	// check we have registered the correct amount of subjects
 	{
-		vec, err := getVector(metrics, subjectsMetricFullname)
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectsMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
 		Expect(vec[0].Value).To(Equal(model.SampleValue(subs)))
 	}
 	// check we have registered the correct amount of (subject,namespace) pairs
 	if subNsPairs > 0 {
-		vec, err := getVector(metrics, subjectNamespacePairsMetricFullname)
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectNamespacePairsMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
 		Expect(vec[0].Value).To(Equal(model.SampleValue(subNsPairs)))
@@ -145,7 +107,7 @@ var _ = Describe("MetricsAccessCache/TimeRequests", func() {
 		time.Sleep(150 * time.Millisecond)
 
 		// then
-		vec, err := getVector(metrics, timeRequestsMetricFullname)
+		vec, err := metricsutil.GetVector(metrics, metricsutil.TimeRequestsMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
 		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
@@ -166,7 +128,7 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 			metrics.CollectRequestMetrics(actualEvent, true)
 
 			// then
-			vec, err := getVector(metrics, resourcesRequestsMetricFullname)
+			vec, err := metricsutil.GetVector(metrics, metricsutil.ResourcesRequestsMetricFullname)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vec).To(HaveLen(1))
 			Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
@@ -178,7 +140,7 @@ var _ = DescribeTableSubtree("MetricsAccessCache/ResourceRequests",
 			metrics.CollectRequestMetrics(actualEvent, false)
 
 			// then
-			vec, err := getVector(metrics, resourcesRequestsMetricFullname)
+			vec, err := metricsutil.GetVector(metrics, metricsutil.ResourcesRequestsMetricFullname)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vec).To(HaveLen(1))
 			Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
