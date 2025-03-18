@@ -21,5 +21,5 @@ To create the cluster, install the Namespace-Lister, and configure the Proxy you
 > The preparation phase is different for the two setups.
 > For details, refer to the documentation of each setup.
 
-After you prepared the cluster, you can execute the tests by leveraging on the `make test` command.
+After you have prepared the cluster, you can execute the tests by running `make test`.
 
