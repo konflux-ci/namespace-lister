@@ -3,11 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
+	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gmeasure"
@@ -19,10 +25,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
-	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,8 +40,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 	var restConfig *rest.Config
 	var c client.Client
 	var ans []client.Object
-	var uns []client.Object
-	var cache cache.Cache
+	var cacheCfg *cacheConfig
 
 	BeforeAll(func(ctx context.Context) {
 		var err error
@@ -57,18 +60,20 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		utilruntime.Must(err)
 
 		// create resources
-		err, ans, uns = createResources(ctx, c, username, 300, 800, 1200)
+		err, ans, _ = createResources(ctx, c, username, 300, 800, 1200)
 		utilruntime.Must(err)
 
+		log.Println("allowed namespaces", len(ans))
+	})
+
+	BeforeEach(func(ctx context.Context) {
 		// create cache
 		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
 		utilruntime.Must(err)
-		cacheConfig := cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
-		cache, err = BuildAndStartCache(ctx, &cacheConfig)
-		utilruntime.Must(err)
+		cacheCfg = &cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
 	})
 
-	It("efficiently authorize on a huge environment", Serial, Label("perf"), func(ctx context.Context) {
+	It("efficiently authorize on a huge environment with cached accesses", Serial, Label("perf"), func(ctx context.Context) {
 		// new gomega experiment
 		experiment := gmeasure.NewExperiment("Authorizing Request")
 
@@ -76,10 +81,34 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// to print out the experiment's report and to include the experiment in any generated reports
 		AddReportEntry(experiment.Name, experiment)
 
-		// create authorizer, namespacelister, and handler
-		authzr := NewAuthorizer(ctx, cache)
-		nl := NewNamespaceLister(cache, authzr)
+		// create cache, namespacelister, and handler
+		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+		utilruntime.Must(err)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, cache, nil)
+		utilruntime.Must(err)
+
+		nl := NewSubjectNamespaceLister(c)
 		lnh := NewListNamespacesHandler(nl)
+
+		// we sample a function repeatedly to get a statistically significant set of measurements
+		experiment.Sample(func(idx int) {
+			var err error
+			var nn *corev1.NamespaceList
+
+			// measure ListNamespaces
+			experiment.MeasureDuration("internal listing", func() {
+				nn, err = nl.ListNamespaces(ctx, username, nil)
+			})
+
+			// check results
+			if err != nil {
+				panic(err)
+			}
+			if lnn := len(nn.Items); lnn != len(ans) {
+				panic(fmt.Errorf("expecting %d namespaces, received %d", len(ans), lnn))
+			}
+		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
+		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
@@ -97,100 +126,85 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 			})
 		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
 		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
+	})
+
+	It("efficiently synchronizes access cache", Serial, Label("perf"), func(ctx context.Context) {
+		// new gomega experiment
+		experiment := gmeasure.NewExperiment("Access Cache Synch")
+
+		// Register the experiment as a ReportEntry - this will cause Ginkgo's reporter infrastructure
+		// to print out the experiment's report and to include the experiment in any generated reports
+		AddReportEntry(experiment.Name, experiment)
+
+		// create resourceCache, namespacelister, and handler
+		resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+		utilruntime.Must(err)
+		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache, nil)
+		utilruntime.Must(err)
+
+		// check cache is correctly populated with
+		// the expected number of subjects and namespaces
+		cacheData := unsafeGetPrivateCacheData(c.AccessCache)
+		Expect(cacheData).To(HaveLen(5502))
+		cachedNsSubPairs := 0
+		for _, v := range cacheData {
+			cachedNsSubPairs += len(v)
+		}
+		Expect(cachedNsSubPairs).To(Equal(6900))
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
 			var err error
-			var nn *corev1.NamespaceList
 
 			// measure ListNamespaces
-			experiment.MeasureDuration("internal listing", func() {
-				nn, err = nl.ListNamespaces(ctx, username)
+			experiment.MeasureDuration("cache synch", func() {
+				err = c.Synch(ctx)
 			})
 
 			// check results
 			if err != nil {
 				panic(err)
 			}
-			if lnn := len(nn.Items); lnn != len(ans) {
-				panic(fmt.Errorf("expecting %d namespaces, received %d", len(ans), lnn))
-			}
 		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
 		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
 
-		// we sample a function repeatedly to get a statistically significant set of measurements
-		experiment.Sample(func(idx int) {
-			nsName := ans[0].GetName()
-			// measure how long it takes to allow a request and store the duration in a "authorization-allow" measurement
-			var d authorizer.Decision
-			var err error
-			r := authorizer.AttributesRecord{
-				User:            &user.DefaultInfo{Name: username},
-				Verb:            "get",
-				Resource:        "namespaces",
-				APIGroup:        corev1.GroupName,
-				APIVersion:      corev1.SchemeGroupVersion.Version,
-				Name:            nsName,
-				Namespace:       nsName,
-				ResourceRequest: true,
-			}
-
-			// measure authorization
-			experiment.MeasureDuration("authorization-allow", func() {
-				d, _, err = authzr.Authorize(ctx, r)
-			})
-
-			// check results
-			if err != nil {
-				panic(err)
-			}
-			if d != authorizer.DecisionAllow {
-				panic(fmt.Sprintf("expected decision Allow, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
-			}
-		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
-		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
-
-		// we sample a function repeatedly to get a statistically significant set of measurements
-		experiment.Sample(func(idx int) {
-			nsName := uns[0].GetName()
-			// measure how long it takes to produce a NoOpinion decision to a request
-			// and store the duration in a "authorization-no-opinion" measurement
-			var d authorizer.Decision
-			var err error
-			r := authorizer.AttributesRecord{
-				User:            &user.DefaultInfo{Name: username},
-				Verb:            "get",
-				Resource:        "namespaces",
-				APIGroup:        corev1.GroupName,
-				APIVersion:      corev1.SchemeGroupVersion.Version,
-				Name:            nsName,
-				Namespace:       nsName,
-				ResourceRequest: true,
-			}
-
-			// measure authorization
-			experiment.MeasureDuration("authorization-noopinion", func() {
-				d, _, err = authzr.Authorize(ctx, r)
-			})
-
-			// check results
-			if err != nil {
-				panic(err)
-			}
-			if d != authorizer.DecisionNoOpinion {
-				panic(fmt.Sprintf("expected decision NoOpinion, got %d (0 Deny, 1 Allowed, 2 NoOpinion)", d))
-			}
-		}, gmeasure.SamplingConfig{N: 30, Duration: 2 * time.Minute})
-		// we'll sample the function up to 30 times or up to 2 minutes, whichever comes first.
-
-		// we get the median listing duration from the experiment we just ran
-		httpListingStats := experiment.GetStats("http listing")
+		// we get the median synch duration from the experiment we just ran
+		httpListingStats := experiment.GetStats("cache synch")
 		medianDuration := httpListingStats.DurationFor(gmeasure.StatMedian)
 
-		// and assert that it hasn't changed much from ~100ms
-		Expect(medianDuration).To(BeNumerically("~", 100*time.Millisecond, 70*time.Millisecond))
+		// and assert that it is below a threshold
+		Expect(medianDuration).To(BeNumerically("<=", 200*time.Millisecond))
 	})
 })
+
+// unsafeGetPrivateCacheData retrieves the map used by the cache to store data.
+// WARNING: This is unsafe and can break if the AccessCache definition is changed.
+// If the AccessCache is changed and `data` is no more the first field in the struct,
+// we need to calculate the appropriate value for the variable `cacheDataSkew`.
+// As an example, if we add a string before the data field, cacheDataSkew will become:
+//
+//	cacheDataSkew := uintptr(unsafe.Sizeof(new(string)))
+//
+// TODO(@filariow): use cache metrics instead of this unsafe function
+func unsafeGetPrivateCacheData(accessCache cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
+	// cast to AtomicListRestockCache
+	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace, cache.AccessData, string])
+	if !ok {
+		panic(fmt.Sprintf("expected AtomicListRestockCache, actual %T", accessCache))
+	}
+
+	// create an unsafe.Pointer to the AccessCache
+	cacheBasePtr := unsafe.Pointer(alrc)
+	// calculate the cacheDataSkew of the AccessCache's data from the AccessCache base
+	cacheDataSkew := uintptr(0)
+	// create a pointer to cache's data location
+	cacheDataPtr := unsafe.Pointer(uintptr(cacheBasePtr) + cacheDataSkew)
+
+	// cast to the actual type
+	dataAtomicPtr := (*atomic.Pointer[cache.AccessData])(cacheDataPtr)
+	// load atomic pointer and return data
+	return *dataAtomicPtr.Load()
+}
 
 func createResources(ctx context.Context, cli client.Client, user string, numAllowedNamespaces, numUnallowedNamespaces, numNonMatchingClusterRoles int) (error, []client.Object, []client.Object) {
 	// cluster scoped resources
@@ -269,14 +283,14 @@ func namespaces(generateName string, quantity int) []client.Object {
 func allowedTenants(user string, namespaces []client.Object, pollutingRoleBindings int, matchingRoleRefKind, matchingRoleRefName, nonMatchingRoleRefKind, nonMatchingRoleRefName string) []client.Object {
 	rr := make([]client.Object, 0, len(namespaces)*(pollutingRoleBindings+1))
 	for _, n := range namespaces {
-
 		// add access role binding
 		rr = append(rr, &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "allowed-tenant-",
 				Namespace:    n.GetName(),
 			},
-			Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+			Subjects: append(randNotPerfTestUsers(5),
+				rbacv1.Subject{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}),
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     matchingRoleRefKind,
@@ -286,12 +300,18 @@ func allowedTenants(user string, namespaces []client.Object, pollutingRoleBindin
 
 		// add pollution
 		for range pollutingRoleBindings {
+			subjects := slices.Concat(
+				[]rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				randNotPerfTestUsers(5),
+				randNotPerfTestServiceAccounts(5),
+			)
+
 			rr = append(rr, &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "pollution-",
 					Namespace:    n.GetName(),
 				},
-				Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				Subjects: subjects,
 				RoleRef: rbacv1.RoleRef{
 					APIGroup: rbacv1.GroupName,
 					Kind:     nonMatchingRoleRefKind,
@@ -312,7 +332,7 @@ func unallowedTenants(user string, namespaces []client.Object, pollutingRoleBind
 				GenerateName: "non-allowed-tenant-",
 				Namespace:    n.GetName(),
 			},
-			Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: "not-the-perf-test-user"}},
+			Subjects: randNotPerfTestUsers(5),
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     matchingRoleRefKind,
@@ -322,12 +342,18 @@ func unallowedTenants(user string, namespaces []client.Object, pollutingRoleBind
 
 		// add pollution
 		for range pollutingRoleBindings {
+			subjects := slices.Concat(
+				[]rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				randNotPerfTestUsers(5),
+				randNotPerfTestServiceAccounts(5),
+			)
+
 			rr = append(rr, &rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "pollution-",
 					Namespace:    n.GetName(),
 				},
-				Subjects: []rbacv1.Subject{{Kind: "User", APIGroup: rbacv1.GroupName, Name: user}},
+				Subjects: subjects,
 				RoleRef: rbacv1.RoleRef{
 					APIGroup: rbacv1.GroupName,
 					Kind:     nonMatchingRoleRefKind,
@@ -337,4 +363,24 @@ func unallowedTenants(user string, namespaces []client.Object, pollutingRoleBind
 		}
 	}
 	return rr
+}
+
+func randNotPerfTestServiceAccounts(size int) []rbacv1.Subject {
+	return randNotPerfTestSubject(size, "", "ServiceAccount")
+}
+
+func randNotPerfTestUsers(size int) []rbacv1.Subject {
+	return randNotPerfTestSubject(size, rbacv1.GroupName, "User")
+}
+
+func randNotPerfTestSubject(size int, apiGroup, kind string) []rbacv1.Subject {
+	ss := make([]rbacv1.Subject, size, size)
+	for i := range size {
+		ss[i] = rbacv1.Subject{
+			APIGroup: apiGroup,
+			Kind:     kind,
+			Name:     fmt.Sprintf("not-the-perf-test-%s-%d", strings.ToLower(kind), rand.Int64()), //nolint:gosec,G404
+		}
+	}
+	return ss
 }

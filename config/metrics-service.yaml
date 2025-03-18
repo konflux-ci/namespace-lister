@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: namespace-lister-metrics
+  namespace: namespace-lister
+spec:
+  selector:
+    apps: namespace-lister
+  type: ClusterIP
+  ports:
+  - name: metrics
+    targetPort: 9100
+    port: 9100

@@ -32,6 +32,21 @@ func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
 
 	user := tcontext.User(ctx)
 	cfg.Impersonate.UserName = user.Name
+	cfg.Impersonate.Groups = user.Groups
+
+	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
+	return arest.BuildClient(cfg)
+}
+
+func buildUnauthenticatedUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
+	// build impersonating client
+	cfg, err := arest.NewDefaultClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// the client should be unauthenticated,
+	// so skip any impersonation here
 
 	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
 	return arest.BuildClient(cfg)

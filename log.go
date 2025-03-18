@@ -28,10 +28,13 @@ func getLogLevel() slog.Level {
 	return slog.Level(level)
 }
 
+// setLoggerIntoContext sets the provided logger into the context
 func setLoggerIntoContext(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, ContextKeyLogger, logger)
 }
 
+// getLoggerFromContext retrieves the logger from the context.
+// If no logger is present in the context, it will return a DiscardAll logger.
 func getLoggerFromContext(ctx context.Context) *slog.Logger {
 	if l, ok := ctx.Value(ContextKeyLogger).(*slog.Logger); ok && l != nil {
 		return l

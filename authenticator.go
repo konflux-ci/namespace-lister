@@ -16,19 +16,32 @@ import (
 	"k8s.io/kube-openapi/pkg/validation/spec"
 )
 
+// Authenticator authenticates requests.
+// If Header authentication is enabled, it will check the value in the request Header accordingly.
+// If the value in the header was provided, it assumes a proxy already authenticated the request.
+//
+// If header authentication is disabled or the header is not set in the request,
+// the request is authenticated by the DelegatingAuthenticator configured with
+// disabled anonymous access and enabled TokenAccessReview. This means it will look for a JWT
+// Token in the request and ask the APIServer to authenticate it.
+// APIServer replies are cached for a short time.
 type Authenticator struct {
 	usernameHeader string
+	groupsHeader   string
 	next           authenticator.Request
 }
 
+// AuthenticateRequest authenticates a request by checking the username header
+// and/or validating the token through the APIServer.
 func (a *Authenticator) AuthenticateRequest(req *http.Request) (*authenticator.Response, bool, error) {
 	if a.usernameHeader != "" {
 		if username := req.Header.Get(a.usernameHeader); username != "" {
-			// TODO: parse User, Group, ServiceAccount.
-			// Look into Kubernetes libs before implementing it
+			groups := req.Header.Values(a.groupsHeader)
+
 			return &authenticator.Response{
 				User: &user.DefaultInfo{
-					Name: username,
+					Name:   username,
+					Groups: groups,
 				},
 			}, true, nil
 		}
@@ -37,12 +50,15 @@ func (a *Authenticator) AuthenticateRequest(req *http.Request) (*authenticator.R
 	return a.next.AuthenticateRequest(req)
 }
 
+// AuthenticatorOptions allows to configure the Authenticator
 type AuthenticatorOptions struct {
-	Client rest.Interface
-	Config *rest.Config
-	Header string
+	Client         rest.Interface
+	Config         *rest.Config
+	UsernameHeader string
+	GroupsHeader   string
 }
 
+// NewAuthenticator builds a new Authenticator
 func NewAuthenticator(opts AuthenticatorOptions) (authenticator.Request, error) {
 	ar, _, err := newTokenReviewAuthenticatorWithOpts(&opts)
 	if err != nil {
@@ -50,16 +66,19 @@ func NewAuthenticator(opts AuthenticatorOptions) (authenticator.Request, error) 
 	}
 
 	return &Authenticator{
-		usernameHeader: opts.Header,
+		usernameHeader: opts.UsernameHeader,
+		groupsHeader:   opts.GroupsHeader,
 		next:           ar,
 	}, nil
 }
 
+// NewTokenReviewAuthenticatorWithClient builds a TokenReviewAuthenticator from a kubernetes client
 func NewTokenReviewAuthenticatorWithClient(c rest.Interface) (authenticator.Request, *spec.SecurityDefinitions, error) {
 	tokenAccessReviewClient := authenticationv1.New(c)
 	return newTokenReviewAuthenticator(tokenAccessReviewClient)
 }
 
+// NewTokenReviewAuthenticatorWithConfig builds a TokenReviewAuthenticator from a kubernetes client configuration
 func NewTokenReviewAuthenticatorWithConfig(cfg *rest.Config) (authenticator.Request, *spec.SecurityDefinitions, error) {
 	cfg = rest.CopyConfig(cfg)
 	tokenAccessReviewClient := authenticationv1.NewForConfigOrDie(cfg)
@@ -88,6 +107,14 @@ func newTokenReviewAuthenticatorWithOpts(opts *AuthenticatorOptions) (authentica
 	}
 }
 
+// GetUsernameHeaderFromEnv retrieves from environment variable the name of the header
+// to use when authenticating requests by username header to extract user's username
 func GetUsernameHeaderFromEnv() string {
 	return os.Getenv(EnvUsernameHeader)
+}
+
+// GetGroupsHeaderFromEnv retrieves from environment variable the name of the header
+// to use when authenticating requests by username header to extract user's groups
+func GetGroupsHeaderFromEnv() string {
+	return os.Getenv(EnvGroupsHeader)
 }

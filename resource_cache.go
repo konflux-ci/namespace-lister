@@ -69,11 +69,6 @@ func trimClusterRole() toolscache.TransformFunc {
 				return nil, fmt.Errorf("error caching ClusterRole: expected a ClusterRole received %T", i)
 			}
 
-			// can't define at this time if it will relate to namespaces, so let's keep it
-			if cr.AggregationRule != nil && cr.AggregationRule.ClusterRoleSelectors != nil {
-				return i, nil
-			}
-
 			cr.Rules = filterNamespacesRelatedPolicyRules(cr.Rules)
 			if len(cr.Rules) == 0 {
 				return nil, nil
@@ -100,7 +95,8 @@ type cacheConfig struct {
 	namespacesLabelSector labels.Selector
 }
 
-func BuildAndStartCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, error) {
+// BuildAndStartResourceCache builds and starts a resource Cache.
+func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, error) {
 	// build scheme
 	s := runtime.NewScheme()
 	if err := corev1.AddToScheme(s); err != nil {
@@ -115,28 +111,18 @@ func BuildAndStartCache(ctx context.Context, cfg *cacheConfig) (cache.Cache, err
 		&corev1.Namespace{},
 		&rbacv1.RoleBinding{},
 		&rbacv1.ClusterRole{},
-		&rbacv1.ClusterRoleBinding{},
 		&rbacv1.Role{},
 	}
 	c, err := cache.New(cfg.restConfig, cache.Options{
 		Scheme:                       s,
 		DefaultUnsafeDisableDeepCopy: ptr(true),
+		ReaderFailOnMissingInformer:  true,
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
-				Transform: mergeTransformFunc(
-					cache.TransformStripManagedFields(),
-					trimAnnotations(),
-				),
 				Label: cfg.namespacesLabelSector,
 			},
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
-			},
-			&rbacv1.ClusterRoleBinding{}: {
-				Transform: mergeTransformFunc(
-					cache.TransformStripManagedFields(),
-					trimAnnotations(),
-				),
 			},
 			&rbacv1.RoleBinding{}: {
 				Transform: mergeTransformFunc(

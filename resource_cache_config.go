@@ -11,9 +11,9 @@ import (
 
 const CacheNamespaceLabelSelectorEnv string = "CACHE_NAMESPACE_LABELSELECTOR"
 
-var ConfigErr error = errors.New("error building cache configuration")
+var ResourceCacheConfigErr error = errors.New("error building resource cache configuration")
 
-func NewCacheConfigFromEnv(cfg *rest.Config) (*cacheConfig, error) {
+func NewResourceCacheConfigFromEnv(cfg *rest.Config) (*cacheConfig, error) {
 	// get namespaces labelSelector
 	cacheCfg := &cacheConfig{restConfig: cfg}
 	if err := getNamespacesLabelSelectors(cacheCfg); err != nil {
@@ -26,7 +26,7 @@ func NewCacheConfigFromEnv(cfg *rest.Config) (*cacheConfig, error) {
 func getNamespacesLabelSelectors(cfg *cacheConfig) error {
 	ls, err := labels.Parse(os.Getenv(CacheNamespaceLabelSelectorEnv))
 	if err != nil {
-		return fmt.Errorf("%w for namespaces: %w", ConfigErr, err)
+		return fmt.Errorf("%w for namespaces: %w", ResourceCacheConfigErr, err)
 	}
 
 	cfg.namespacesLabelSector = ls

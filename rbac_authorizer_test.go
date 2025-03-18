@@ -2,8 +2,6 @@ package main_test
 
 import (
 	"context"
-	"io"
-	"log/slog"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,21 +16,13 @@ import (
 )
 
 var _ = Describe("CRAuthRetriever", func() {
-	var (
-		logger *slog.Logger
-	)
-
-	BeforeEach(func() {
-		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
-	})
-
 	It("retrieves clusterrole", func(ctx context.Context) {
 		// given
 		cr := &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{Name: "ns-get"},
 		}
 		cli := fake.NewClientBuilder().WithObjects(cr).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli, logger)
+		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
 
 		// when
 		acr, err := authRetriever.GetClusterRole(cr.Name)
@@ -48,7 +38,7 @@ var _ = Describe("CRAuthRetriever", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "ns-get", Namespace: "myns"},
 		}
 		cli := fake.NewClientBuilder().WithObjects(r).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli, logger)
+		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
 
 		// when
 		ar, err := authRetriever.GetRole(r.Namespace, r.Name)
@@ -66,7 +56,7 @@ var _ = Describe("CRAuthRetriever", func() {
 			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "ns-get-1-0", Namespace: "myns-1"}},
 		}
 		cli := fake.NewClientBuilder().WithObjects(rbl...).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli, logger)
+		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
 
 		// when
 		arbl, err := authRetriever.ListRoleBindings("myns-0")
@@ -84,13 +74,13 @@ var _ = Describe("CRAuthRetriever", func() {
 			&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "ns-get-2"}},
 		}
 		cli := fake.NewClientBuilder().WithObjects(crbl...).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli, logger)
+		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
 
 		// when
 		acrbl, err := authRetriever.ListClusterRoleBindings()
 
 		// then
 		Expect(err).NotTo(HaveOccurred())
-		Expect(acrbl).To(ConsistOf(crbl))
+		Expect(acrbl).To(BeEmpty())
 	})
 })

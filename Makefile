@@ -4,6 +4,8 @@ LOCALBIN := $(ROOT_DIR)/bin
 OUT_DIR := $(ROOT_DIR)/out
 
 GINKGO ?= ginkgo
+GINKGO_ARGS ?=
+
 GO ?= go
 
 PERF_OUT_DIR := $(OUT_DIR)/perf
@@ -52,7 +54,7 @@ fmt: ## Run go fmt against code.
 
 .PHONY: test
 test: ## Run go test against code.
-	$(GINKGO) --label-filter='!perf'
+	$(GINKGO) $(GINKGO_ARGS) --label-filter='!perf' ./pkg/... ./
 
 .PHONY: test-perf
 test-perf: ## Run performance tests
@@ -61,6 +63,7 @@ test-perf: ## Run performance tests
 		--name namespace-lister-perf-test $(PERF_CLUSTER_PROVIDER_FLAGS)
 	KUBECONFIG=$(PERF_CLUSTER_KUBECONFIG) $(GINKGO) --label-filter='perf' \
 		--keep-going --procs=1 --flake-attempts 2 --output-dir=$(PERF_OUT_DIR)
+	# -$(PERF_CLUSTER_PROVIDER) delete cluster --name namespace-lister-perf-test
 
 .PHONY: image-build
 image-build:

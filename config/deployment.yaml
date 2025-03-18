@@ -23,6 +23,8 @@ spec:
         - -enable-tls
         - -cert-path=/var/tls/tls.crt
         - -key-path=/var/tls/tls.key
+        - -enable-metrics
+        - -metrics-address=:9100
         image: namespace-lister:latest
         name: namespace-lister
         imagePullPolicy: IfNotPresent
@@ -33,6 +35,18 @@ spec:
         #   value: "X-User"
         # - name: CACHE_NAMESPACE_LABELSELECTOR
         #   value: 'konflux.dev/type=user'
+        livenessProbe:
+          initialDelaySeconds: 1
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTPS
+        readinessProbe:
+          initialDelaySeconds: 1
+          httpGet:
+            path: /readyz
+            port: 8080
+            scheme: HTTPS
         resources:
           limits:
             cpu: 500m
@@ -43,6 +57,8 @@ spec:
         ports:
         - containerPort: 8080
           name: http
+        - containerPort: 9100
+          name: metrics
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

@@ -25,12 +25,11 @@ func NewListNamespacesHandler(lister NamespaceLister) http.Handler {
 func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	l := getLoggerFromContext(ctx)
-	l.Info("received list request")
 
 	ud := r.Context().Value(ContextKeyUserDetails).(*authenticator.Response)
 
 	// retrieve projects as the user
-	nn, err := h.lister.ListNamespaces(r.Context(), ud.User.GetName())
+	nn, err := h.lister.ListNamespaces(r.Context(), ud.User.GetName(), ud.User.GetGroups())
 	if err != nil {
 		serr := &kerrors.StatusError{}
 		if errors.As(err, &serr) {

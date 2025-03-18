@@ -35,6 +35,20 @@ deploy-namespace-lister: $(OUT_DIR)
 				--kind "Deployment" \
 				--name "namespace-lister" \
 				--version "v1" && \
+			cp "$(ROOT_DIR)/../config/patches/with_log_debug.yaml" . && \
+			kustomize edit add patch \
+				--path "with_log_debug.yaml" \
+				--group "apps" \
+				--kind "Deployment" \
+				--name "namespace-lister" \
+				--version "v1" && \
+			cp "$(ROOT_DIR)/config/patches/with_cache_resyncperiod.yaml" . && \
+			kustomize edit add patch \
+				--path "with_cache_resyncperiod.yaml" \
+				--group "apps" \
+				--kind "Deployment" \
+				--name "namespace-lister" \
+				--version "v1" && \
 			kustomize build | $(KUBECTL) apply -f - ; \
 	)
 

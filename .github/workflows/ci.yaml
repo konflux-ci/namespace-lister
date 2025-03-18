@@ -29,8 +29,10 @@ jobs:
           go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Run tests
-        run: |
-          GINKGO="go run github.com/onsi/ginkgo/v2/ginkgo --github-output" make test
+        env:
+          GINKGO: go run github.com/onsi/ginkgo/v2/ginkgo
+          GINKGO_ARGS: --race --github-output
+        run: make test
 
   performance-tests:
     name: Run performance tests
