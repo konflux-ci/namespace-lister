@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/cucumber/godog"
@@ -28,6 +29,7 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Given(`^the ServiceAccount has Cluster-scoped get permission on namespaces$`, UserInfoHasClusterScopedGetPermissionOnNamespaces)
 	ctx.Given(`^(\d+) tenant namespaces exist$`, NTenantNamespacesExist)
 
+	ctx.Then(`^the ServiceAccount can retrieve the namespaces they and their groups have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User can retrieve the namespaces they and their groups have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
@@ -147,7 +149,7 @@ func subjectHasAccessToNNamespaces(ctx context.Context, subject rbacv1.Subject, 
 	for i := range number {
 		n := corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("run-%s-%s-%d", run, subject.Name, i),
+				Name: fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
 				Labels: map[string]string{
 					"konflux.ci/type":           "user",
 					"namespace-lister/scope":    "acceptance-tests",
@@ -161,8 +163,8 @@ func subjectHasAccessToNNamespaces(ctx context.Context, subject rbacv1.Subject, 
 
 		if err := cli.Create(ctx, &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("run-%s-%s-%d", run, subject.Name, i),
-				Namespace: fmt.Sprintf("run-%s-%s-%d", run, subject.Name, i),
+				Name:      fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
+				Namespace: fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
 			},
 			RoleRef: rbacv1.RoleRef{
 				Kind:     "ClusterRole",
