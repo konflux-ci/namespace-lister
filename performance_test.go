@@ -9,14 +9,14 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"time"
-	"unsafe"
 
-	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
+	"github.com/konflux-ci/namespace-lister/pkg/metricsutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gmeasure"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,18 +139,34 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create resourceCache, namespacelister, and handler
 		resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
 		utilruntime.Must(err)
-		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache, nil)
+		registry := prometheus.NewRegistry()
+		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache, registry)
 		utilruntime.Must(err)
 
 		// check cache is correctly populated with
-		// the expected number of subjects and namespaces
-		cacheData := unsafeGetPrivateCacheData(c.AccessCache)
-		Expect(cacheData).To(HaveLen(5502))
-		cachedNsSubPairs := 0
-		for _, v := range cacheData {
-			cachedNsSubPairs += len(v)
+		{ // the expected number of subjects
+			vec, err := metricsutil.GetVector(registry, metricsutil.SubjectsMetricFullname)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(vec).To(HaveLen(1))
+			Expect(vec[0].Value).To(Equal(model.SampleValue(5502)))
 		}
-		Expect(cachedNsSubPairs).To(Equal(6900))
+		{ // the expected number of (subject,namespace) pairs
+			vec, err := metricsutil.GetVector(registry, metricsutil.SubjectNamespacePairsMetricFullname)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(vec).To(
+				And(
+					HaveLen(2),
+					ContainElements(
+						Satisfy(func(s *model.Sample) bool {
+							return s.Metric["subject_gk"] == rbacv1.GroupName+"/"+rbacv1.GroupKind && s.Value == 1100
+						}),
+						Satisfy(func(s *model.Sample) bool {
+							return s.Metric["subject_gk"] == rbacv1.GroupName+"/"+rbacv1.UserKind && s.Value == 5800
+						}),
+					),
+				),
+			)
+		}
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
@@ -176,35 +192,6 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		Expect(medianDuration).To(BeNumerically("<=", 200*time.Millisecond))
 	})
 })
-
-// unsafeGetPrivateCacheData retrieves the map used by the cache to store data.
-// WARNING: This is unsafe and can break if the AccessCache definition is changed.
-// If the AccessCache is changed and `data` is no more the first field in the struct,
-// we need to calculate the appropriate value for the variable `cacheDataSkew`.
-// As an example, if we add a string before the data field, cacheDataSkew will become:
-//
-//	cacheDataSkew := uintptr(unsafe.Sizeof(new(string)))
-//
-// TODO(@filariow): use cache metrics instead of this unsafe function
-func unsafeGetPrivateCacheData(accessCache cache.AccessCache) map[rbacv1.Subject][]corev1.Namespace {
-	// cast to AtomicListRestockCache
-	alrc, ok := accessCache.(*cache.AtomicListRestockCache[rbacv1.Subject, []corev1.Namespace, corev1.Namespace, cache.AccessData, string])
-	if !ok {
-		panic(fmt.Sprintf("expected AtomicListRestockCache, actual %T", accessCache))
-	}
-
-	// create an unsafe.Pointer to the AccessCache
-	cacheBasePtr := unsafe.Pointer(alrc)
-	// calculate the cacheDataSkew of the AccessCache's data from the AccessCache base
-	cacheDataSkew := uintptr(0)
-	// create a pointer to cache's data location
-	cacheDataPtr := unsafe.Pointer(uintptr(cacheBasePtr) + cacheDataSkew)
-
-	// cast to the actual type
-	dataAtomicPtr := (*atomic.Pointer[cache.AccessData])(cacheDataPtr)
-	// load atomic pointer and return data
-	return *dataAtomicPtr.Load()
-}
 
 func createResources(ctx context.Context, cli client.Client, user string, numAllowedNamespaces, numUnallowedNamespaces, numNonMatchingClusterRoles int) (error, []client.Object, []client.Object) {
 	// cluster scoped resources
