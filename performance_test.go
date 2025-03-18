@@ -145,12 +145,12 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// check cache is correctly populated with
 		// the expected number of subjects and namespaces
 		cacheData := unsafeGetPrivateCacheData(c.AccessCache)
-		Expect(cacheData).To(HaveLen(5501))
+		Expect(cacheData).To(HaveLen(5502))
 		cachedNsSubPairs := 0
 		for _, v := range cacheData {
 			cachedNsSubPairs += len(v)
 		}
-		Expect(cachedNsSubPairs).To(Equal(5800))
+		Expect(cachedNsSubPairs).To(Equal(6900))
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {

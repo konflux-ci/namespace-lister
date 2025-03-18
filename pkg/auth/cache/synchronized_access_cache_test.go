@@ -114,7 +114,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(userSubject)).To(BeEquivalentTo(namespaces))
+		Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(namespaces))
 	})
 
 	It("matches ServiceAccount after synch", func(ctx context.Context) {
@@ -134,10 +134,10 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(serviceAccountSubject)).To(BeEquivalentTo(namespaces))
+		Expect(nsc.AccessCache.List(serviceAccountSubject)).To(ConsistOf(namespaces))
 	})
 
-	It("doesn't cache Groups", func(ctx context.Context) {
+	It("does cache Groups", func(ctx context.Context) {
 		namespaceLister := mocks.NewMockClientReader(ctrl)
 		namespaceLister.EXPECT().
 			List(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -154,7 +154,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(groupSubject)).To(BeEmpty())
+		Expect(nsc.AccessCache.List(groupSubject)).To(ConsistOf(namespaces))
 	})
 })
 
@@ -174,7 +174,7 @@ var _ = DescribeTable("duplicate results", func(ctx context.Context, sr *mocks.M
 	nsc := cache.NewSynchronizedAccessCache(realSubjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 	Expect(nsc.Synch(ctx)).To(Succeed())
-	Expect(nsc.AccessCache.List(userSubject)).To(BeEquivalentTo(namespaces))
+	Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(namespaces))
 },
 	Entry("does not produce duplicates with multiple RoleBindings to access ClusterRole", &mocks.MockStaticRoles{
 		ClusterRoles: []*rbacv1.ClusterRole{
