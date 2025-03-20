@@ -14,13 +14,13 @@ import (
 )
 
 var _ = Describe("Authenticator", func() {
-
 	var (
 		ctrl *gomock.Controller
 		auth authenticator.Request
 		c    *mocks.MockFakeInterface
 	)
 
+	groupsHeaderKey := "X-Groups-Header"
 	userHeaderKey := "X-User-Header"
 	userHeaderValue := "my-user"
 
@@ -33,8 +33,9 @@ var _ = Describe("Authenticator", func() {
 			// given
 			c = mocks.NewMockFakeInterface(ctrl)
 			a, err := namespacelister.NewAuthenticator(namespacelister.AuthenticatorOptions{
-				Client: c,
-				Header: userHeaderKey,
+				Client:         c,
+				UsernameHeader: userHeaderKey,
+				GroupsHeader:   groupsHeaderKey,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -43,9 +44,13 @@ var _ = Describe("Authenticator", func() {
 
 		It("returns user info from header", func(ctx context.Context) {
 			// given
+			groups := []string{"group1", "group2"}
 			r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			Expect(err).NotTo(HaveOccurred())
 			r.Header.Add(userHeaderKey, userHeaderValue)
+			for _, g := range groups {
+				r.Header.Add(groupsHeaderKey, g)
+			}
 
 			// when
 			rs, ok, err := auth.AuthenticateRequest(r)
@@ -56,6 +61,7 @@ var _ = Describe("Authenticator", func() {
 			Expect(rs).NotTo(BeNil())
 			Expect(rs.User).NotTo(BeNil())
 			Expect(rs.User.GetName()).To(BeEquivalentTo(userHeaderValue))
+			Expect(rs.User.GetGroups()).To(BeEquivalentTo(groups))
 		})
 	})
 

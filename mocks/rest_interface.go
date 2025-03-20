@@ -182,15 +182,19 @@ func (m *MockFakeSubjectNamespacesLister) EXPECT() *MockFakeSubjectNamespacesLis
 }
 
 // List mocks base method.
-func (m *MockFakeSubjectNamespacesLister) List(subject v10.Subject) []v1.Namespace {
+func (m *MockFakeSubjectNamespacesLister) List(subjects ...v10.Subject) []v1.Namespace {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", subject)
+	varargs := []any{}
+	for _, a := range subjects {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "List", varargs...)
 	ret0, _ := ret[0].([]v1.Namespace)
 	return ret0
 }
 
 // List indicates an expected call of List.
-func (mr *MockFakeSubjectNamespacesListerMockRecorder) List(subject any) *gomock.Call {
+func (mr *MockFakeSubjectNamespacesListerMockRecorder) List(subjects ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockFakeSubjectNamespacesLister)(nil).List), subject)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockFakeSubjectNamespacesLister)(nil).List), subjects...)
 }

@@ -27,6 +27,7 @@ import (
 // APIServer replies are cached for a short time.
 type Authenticator struct {
 	usernameHeader string
+	groupsHeader   string
 	next           authenticator.Request
 }
 
@@ -35,11 +36,12 @@ type Authenticator struct {
 func (a *Authenticator) AuthenticateRequest(req *http.Request) (*authenticator.Response, bool, error) {
 	if a.usernameHeader != "" {
 		if username := req.Header.Get(a.usernameHeader); username != "" {
-			// TODO: parse User, Group, ServiceAccount.
-			// Look into Kubernetes libs before implementing it
+			groups := req.Header.Values(a.groupsHeader)
+
 			return &authenticator.Response{
 				User: &user.DefaultInfo{
-					Name: username,
+					Name:   username,
+					Groups: groups,
 				},
 			}, true, nil
 		}
@@ -50,9 +52,10 @@ func (a *Authenticator) AuthenticateRequest(req *http.Request) (*authenticator.R
 
 // AuthenticatorOptions allows to configure the Authenticator
 type AuthenticatorOptions struct {
-	Client rest.Interface
-	Config *rest.Config
-	Header string
+	Client         rest.Interface
+	Config         *rest.Config
+	UsernameHeader string
+	GroupsHeader   string
 }
 
 // NewAuthenticator builds a new Authenticator
@@ -63,7 +66,8 @@ func NewAuthenticator(opts AuthenticatorOptions) (authenticator.Request, error) 
 	}
 
 	return &Authenticator{
-		usernameHeader: opts.Header,
+		usernameHeader: opts.UsernameHeader,
+		groupsHeader:   opts.GroupsHeader,
 		next:           ar,
 	}, nil
 }
@@ -104,7 +108,13 @@ func newTokenReviewAuthenticatorWithOpts(opts *AuthenticatorOptions) (authentica
 }
 
 // GetUsernameHeaderFromEnv retrieves from environment variable the name of the header
-// to use when authenticating requests by username header
+// to use when authenticating requests by username header to extract user's username
 func GetUsernameHeaderFromEnv() string {
 	return os.Getenv(EnvUsernameHeader)
+}
+
+// GetGroupsHeaderFromEnv retrieves from environment variable the name of the header
+// to use when authenticating requests by username header to extract user's groups
+func GetGroupsHeaderFromEnv() string {
+	return os.Getenv(EnvGroupsHeader)
 }

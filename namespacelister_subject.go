@@ -12,7 +12,7 @@ import (
 var _ NamespaceLister = &subjectNamespaceLister{}
 
 type SubjectNamespacesLister interface {
-	List(subject rbacv1.Subject) []corev1.Namespace
+	List(subjects ...rbacv1.Subject) []corev1.Namespace
 }
 
 type subjectNamespaceLister struct {
@@ -27,9 +27,9 @@ func NewSubjectNamespaceLister(subjectNamespacesLister SubjectNamespacesLister) 
 }
 
 // ListNamespaces retrieves the namespaces the provided user can access from a cache calculated ahead of time
-func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
-	sub := c.parseUsername(username)
-	nn := c.subjectNamespacesLister.List(sub)
+func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username string, groups []string) (*corev1.NamespaceList, error) {
+	subs := c.subjects(username, groups)
+	nn := c.subjectNamespacesLister.List(subs...)
 
 	// list all namespaces
 	return &corev1.NamespaceList{
@@ -44,11 +44,29 @@ func (c *subjectNamespaceLister) ListNamespaces(ctx context.Context, username st
 	}, nil
 }
 
+func (c *subjectNamespaceLister) subjects(username string, groups []string) []rbacv1.Subject {
+	subs := make([]rbacv1.Subject, len(groups)+1)
+
+	// add username subject
+	subs[0] = c.parseUsername(username)
+
+	// add groups subjects
+	for i, g := range groups {
+		subs[1+i] = rbacv1.Subject{
+			Kind:     rbacv1.GroupKind,
+			APIGroup: rbacv1.GroupName,
+			Name:     g,
+		}
+	}
+
+	return subs
+}
+
 func (c *subjectNamespaceLister) parseUsername(username string) rbacv1.Subject {
 	if strings.HasPrefix(username, "system:serviceaccount:") {
 		ss := strings.Split(username, ":")
 		return rbacv1.Subject{
-			Kind:      "ServiceAccount",
+			Kind:      rbacv1.ServiceAccountKind,
 			Name:      ss[3],
 			Namespace: ss[2],
 		}
@@ -56,7 +74,7 @@ func (c *subjectNamespaceLister) parseUsername(username string) rbacv1.Subject {
 
 	return rbacv1.Subject{
 		APIGroup: rbacv1.GroupName,
-		Kind:     "User",
+		Kind:     rbacv1.UserKind,
 		Name:     username,
 	}
 }

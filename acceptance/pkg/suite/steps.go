@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/cucumber/godog"
@@ -23,9 +24,13 @@ import (
 func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Given(`^ServiceAccount has access to "([^"]*)" namespaces$`, UserInfoHasAccessToNNamespaces)
 	ctx.Given(`^User has access to "([^"]*)" namespaces$`, UserHasAccessToNNamespaces)
+	ctx.Given(`^Group "([^"]*)" has access to "([^"]*)" namespaces$`, GroupHasAccessToNNamespaces)
+	ctx.Given(`^User is part of group "([^"]*)"$`, UserIsPartOfGroup)
 	ctx.Given(`^the ServiceAccount has Cluster-scoped get permission on namespaces$`, UserInfoHasClusterScopedGetPermissionOnNamespaces)
 	ctx.Given(`^(\d+) tenant namespaces exist$`, NTenantNamespacesExist)
 
+	ctx.Then(`^the ServiceAccount can retrieve the namespaces they and their groups have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+	ctx.Then(`^the User can retrieve the namespaces they and their groups have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the ServiceAccount retrieves no namespaces$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
@@ -103,6 +108,21 @@ func UserInfoHasClusterScopedGetPermissionOnNamespaces(ctx context.Context) (con
 	return ctx, nil
 }
 
+func UserIsPartOfGroup(ctx context.Context, group string) (context.Context, error) {
+	user := tcontext.User(ctx)
+	user.Groups = append(user.Groups, group)
+	return tcontext.WithUser(ctx, user), nil
+}
+
+func GroupHasAccessToNNamespaces(ctx context.Context, group string, number int) (context.Context, error) {
+	sub := rbacv1.Subject{
+		Kind:     rbacv1.GroupKind,
+		APIGroup: rbacv1.GroupName,
+		Name:     group,
+	}
+	return subjectHasAccessToNNamespaces(ctx, sub, number)
+}
+
 func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
 	runId := tcontext.RunId(ctx)
 	username := fmt.Sprintf("user-%s", runId)
@@ -112,8 +132,12 @@ func UserHasAccessToNNamespaces(ctx context.Context, number int) (context.Contex
 }
 
 func UserInfoHasAccessToNNamespaces(ctx context.Context, number int) (context.Context, error) {
-	run := tcontext.RunId(ctx)
 	user := tcontext.User(ctx)
+	return subjectHasAccessToNNamespaces(ctx, user.AsSubject(), number)
+}
+
+func subjectHasAccessToNNamespaces(ctx context.Context, subject rbacv1.Subject, number int) (context.Context, error) {
+	run := tcontext.RunId(ctx)
 
 	cli, err := arest.BuildDefaultHostClient()
 	if err != nil {
@@ -121,11 +145,11 @@ func UserInfoHasAccessToNNamespaces(ctx context.Context, number int) (context.Co
 	}
 
 	// create namespaces
-	nn := []corev1.Namespace{}
+	nn := tcontext.Namespaces(ctx)
 	for i := range number {
 		n := corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("run-%s-%d", run, i),
+				Name: fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
 				Labels: map[string]string{
 					"konflux.ci/type":           "user",
 					"namespace-lister/scope":    "acceptance-tests",
@@ -139,15 +163,15 @@ func UserInfoHasAccessToNNamespaces(ctx context.Context, number int) (context.Co
 
 		if err := cli.Create(ctx, &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("run-%s-%d", run, i),
-				Namespace: fmt.Sprintf("run-%s-%d", run, i),
+				Name:      fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
+				Namespace: fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
 			},
 			RoleRef: rbacv1.RoleRef{
 				Kind:     "ClusterRole",
 				Name:     "namespace-get",
 				APIGroup: rbacv1.GroupName,
 			},
-			Subjects: []rbacv1.Subject{user.AsSubject()},
+			Subjects: []rbacv1.Subject{subject},
 		}); err != nil {
 			return ctx, err
 		}
@@ -173,7 +197,11 @@ func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (c
 
 		enn := tcontext.Namespaces(ctx)
 		if expected, actual := len(enn), len(ann.Items); expected != actual {
-			log.Printf("expected %d namespaces, actual %d", expected, actual)
+			ad := make([]string, len(ann.Items))
+			for _, n := range ann.Items {
+				ad = append(ad, n.Name)
+			}
+			log.Printf("expected %d namespaces, actual %d: %v", expected, actual, ad)
 			return false, nil
 		}
 

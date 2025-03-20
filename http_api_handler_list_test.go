@@ -20,10 +20,10 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 )
 
-type NamespaceListerMock func(ctx context.Context, username string) (*corev1.NamespaceList, error)
+type NamespaceListerMock func(ctx context.Context, username string, groups []string) (*corev1.NamespaceList, error)
 
-func (m NamespaceListerMock) ListNamespaces(ctx context.Context, username string) (*corev1.NamespaceList, error) {
-	return m(ctx, username)
+func (m NamespaceListerMock) ListNamespaces(ctx context.Context, username string, groups []string) (*corev1.NamespaceList, error) {
+	return m(ctx, username, groups)
 }
 
 var _ = Describe("HttpHandlerList", func() {
@@ -47,7 +47,7 @@ var _ = Describe("HttpHandlerList", func() {
 		if err != nil {
 			panic(err)
 		}
-		lister := NamespaceListerMock(func(ctx context.Context, username string) (*corev1.NamespaceList, error) {
+		lister := NamespaceListerMock(func(ctx context.Context, username string, groups []string) (*corev1.NamespaceList, error) {
 			return &expected, nil
 		})
 		handler := namespacelister.NewListNamespacesHandler(lister)
@@ -77,7 +77,7 @@ var _ = Describe("HttpHandlerList", func() {
 
 	DescribeTable("returns an error when lister returns an error", func(expectedErr error, expectedResponseStatus int) {
 		// given
-		lister := NamespaceListerMock(func(ctx context.Context, username string) (*corev1.NamespaceList, error) {
+		lister := NamespaceListerMock(func(ctx context.Context, username string, groups []string) (*corev1.NamespaceList, error) {
 			return nil, expectedErr
 		})
 		handler := namespacelister.NewListNamespacesHandler(lister)

@@ -72,27 +72,7 @@ You can find the specification of the implemented Features at in the [acceptance
 ## Try
 
 The easiest way to try this component locally is by using the `make prepare` target in `acceptance/test/dumb-proxy` or `acceptance/test/smart-proxy`.
-This command will build the image, create the Kind cluster, load the image in it, and deploy all needed components.
+These commands will build the image, create the Kind cluster, load the image in it, and deploy all needed components.
 
 Please take a look at the [Acceptance Tests README](./acceptance/README.md) for more information on the two setups and how to access the namespace-lister once deployed.
 
-### Proxy
-
-The `prepare` target will deploy an NGINX Proxy that is in charge of authenticating user requests.
-The proxy forwards the `/api/v1/namespaces` ones to the Namespace-Lister and the others to the Kubernetes APIServer.
-
-To forward authentication details to the API Server, a token is required from the user.
-This means that the default certificate-based authentication is not supported.
-
-The test preparation phase creates a ServiceAccount and binds it to the `cluster-admin` role.
-Finally, a kubeconfig is generated for this ServiceAccount and stored at `/tmp/namespace-lister-acceptance-tests-user.kcfg`.
-
-Token validation is not implemented in the NGINX as it is not required in this setup.
-This means that any request to `/api/v1/namespaces` will just work, the only required field is the `Impersonate-User` Header.
-
-In other words, the following command will work:
-```
-curl -sk -X GET https://localhost:10443/api/v1/namespaces -H 'Impersonate-User: any-user-i-like'
-```
-
-The other requests will be forwarded to the Kubernetes APIServer that will validate them.
