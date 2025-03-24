@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"strings"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -157,7 +159,7 @@ func (s *accessCacheMetrics) CollectSynchMetrics(cacheData AccessData, err error
 	// update number of (subject, namespace) pairs
 	gkNsPairCount := map[string]int{}
 	for s, v := range cacheData {
-		sgk := s.APIGroup + "/" + s.Kind
+		sgk := strings.TrimLeft(s.APIGroup+"/"+s.Kind, "/")
 		gkNsPairCount[sgk] = gkNsPairCount[sgk] + len(v)
 	}
 
