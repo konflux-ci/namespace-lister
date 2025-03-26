@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/kubernetes/plugin/pkg/auth/authorizer/rbac"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -69,6 +70,48 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			Times(1)
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{
 			SynchTimeout: 1 * time.Second,
+		})
+
+		// when
+		Expect(nsc.Synch(ctx)).
+			// then
+			To(MatchError("context deadline exceeded"))
+	})
+
+	It("will return empty data if timed-out", Label("aaa"), func(ctx context.Context) {
+		// given
+		namespaceLister := mocks.NewMockClientReader(ctrl)
+		namespaceLister.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nn *corev1.NamespaceList, opts ...client.ListOption) error {
+				(&corev1.NamespaceList{
+					Items: []corev1.Namespace{
+						{ObjectMeta: metav1.ObjectMeta{Name: "myns-1"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "myns-2"}},
+						{ObjectMeta: metav1.ObjectMeta{Name: "myns-3"}},
+					},
+				}).DeepCopyInto(nn)
+				return nil
+			}).
+			Times(1)
+
+			// subjectLocator will reply fast the first time it's called and cause a timeout the second time
+		hasBeenCalledOnce := false
+		subjectLocator.EXPECT().
+			AllowedSubjects(gomock.Any()).
+			DoAndReturn(func(attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
+				if !hasBeenCalledOnce {
+					hasBeenCalledOnce = true
+					return []rbacv1.Subject{userSubject}, nil
+				}
+
+				time.Sleep(100 * time.Millisecond)
+				return []rbacv1.Subject{userSubject}, nil
+			}).
+			Times(2)
+
+		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{
+			SynchTimeout: 50 * time.Millisecond,
 		})
 
 		// when

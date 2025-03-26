@@ -93,6 +93,12 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 
 	// get subjects for each namespace
 	for _, ns := range nn.Items {
+		// interrupt if context elapsed
+		if err := ctx.Err(); err != nil {
+			s.logger.Warn("cache restocking: could not complete calculate access data process", "error", err)
+			return AccessData{}, ctx.Err()
+		}
+
 		ar := authorizer.AttributesRecord{
 			Verb:            "get",
 			Resource:        "namespaces",
@@ -107,7 +113,7 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 		if err != nil {
 			// do not forward the error as it should be due
 			// to cache evicted (cluster)roles
-			s.logger.Debug("cache restocking: error caculating allowed subjects", "error", err)
+			s.logger.Debug("cache restocking: error caculating allowed subjects", "namespace", ns.GetName(), "error", err)
 		}
 
 		// remove duplicates from allowed subjects
