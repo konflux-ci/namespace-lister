@@ -97,10 +97,8 @@ var _ = Describe("SynchronizedAccessCache", func() {
 
 		subjectLocator.EXPECT().
 			AllowedSubjects(gomock.Any()).
-			DoAndReturn(func(attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
-				// reply fast the first time
-				return []rbacv1.Subject{userSubject}, nil
-			}).
+			// reply fast the first time
+			Return([]rbacv1.Subject{userSubject}, nil).
 			DoAndReturn(func(attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
 				// cause a timeout the second time
 				time.Sleep(100 * time.Millisecond)
