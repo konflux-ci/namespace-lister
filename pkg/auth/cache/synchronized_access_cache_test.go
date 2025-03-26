@@ -95,20 +95,17 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			}).
 			Times(1)
 
-			// subjectLocator will reply fast the first time it's called and cause a timeout the second time
-		hasBeenCalledOnce := false
 		subjectLocator.EXPECT().
 			AllowedSubjects(gomock.Any()).
 			DoAndReturn(func(attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
-				if !hasBeenCalledOnce {
-					hasBeenCalledOnce = true
-					return []rbacv1.Subject{userSubject}, nil
-				}
-
-				time.Sleep(100 * time.Millisecond)
+				// reply fast the first time
 				return []rbacv1.Subject{userSubject}, nil
 			}).
-			Times(2)
+			DoAndReturn(func(attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
+				// cause a timeout the second time
+				time.Sleep(100 * time.Millisecond)
+				return []rbacv1.Subject{userSubject}, nil
+			})
 
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{
 			SynchTimeout: 50 * time.Millisecond,
