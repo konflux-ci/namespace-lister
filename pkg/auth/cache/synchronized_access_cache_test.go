@@ -57,6 +57,26 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		subjectLocator = mocks.NewMockSubjectLocator(ctrl)
 	})
 
+	It("will timeout on long running synch", func(ctx context.Context) {
+		// given
+		namespaceLister := mocks.NewMockClientReader(ctrl)
+		namespaceLister.EXPECT().
+			List(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, nn *corev1.NamespaceList, opts ...client.ListOption) error {
+				<-ctx.Done()
+				return ctx.Err()
+			}).
+			Times(1)
+		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{
+			SynchTimeout: 1 * time.Second,
+		})
+
+		// when
+		Expect(nsc.Synch(ctx)).
+			// then
+			To(MatchError("context deadline exceeded"))
+	})
+
 	It("can not run synch twice", func(ctx context.Context) {
 		// given
 		namespaceLister := mocks.NewMockClientReader(ctrl)

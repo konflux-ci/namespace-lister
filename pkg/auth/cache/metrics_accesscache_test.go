@@ -39,7 +39,7 @@ var _ = Describe("MetricsAccessCache/FailedSynch", func() {
 	})
 })
 
-var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subs, subNsPairs int) {
+var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.AccessData, err error, subNsPairs int) {
 	// given
 	metrics := cache.NewAccessCacheMetrics()
 
@@ -60,7 +60,7 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectsMetricFullname)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(vec).To(HaveLen(1))
-		Expect(vec[0].Value).To(Equal(model.SampleValue(subs)))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(len(data))))
 	}
 	// check we have registered the correct amount of (subject,namespace) pairs
 	if subNsPairs > 0 {
@@ -70,15 +70,53 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 		Expect(vec[0].Value).To(Equal(model.SampleValue(subNsPairs)))
 	}
 },
-	Entry("nil data", nil, nil, 0, 0),
-	Entry("empty data", cache.AccessData{}, nil, 0, 0),
+	Entry("nil data", nil, nil, 0),
+	Entry("empty data", cache.AccessData{}, nil, 0),
 	Entry("1 subject", cache.AccessData{
 		rbacv1.Subject{}: []corev1.Namespace{},
-	}, nil, 1, 0),
+	}, nil, 0),
 	Entry("2 subjects - 10 Namespaces", cache.AccessData{
 		rbacv1.Subject{Name: "1"}: []corev1.Namespace{{}, {}, {}, {}, {}},
 		rbacv1.Subject{Name: "2"}: []corev1.Namespace{{}, {}, {}, {}, {}},
-	}, nil, 2, 10),
+	}, nil, 10),
+)
+
+var _ = DescribeTable("MetricsAccessCache/UnsuccessfulSynch", func(data cache.AccessData, err error) {
+	// given
+	metrics := cache.NewAccessCacheMetrics()
+
+	// when
+	metrics.CollectSynchMetrics(data, err)
+
+	// then
+	// check that the synch operation has been executed
+	{
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SyncMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(1)))
+		Expect(vec[0].Metric["status"]).To(Equal(model.LabelValue("failed")))
+	}
+	// check we have registered the correct amount of subjects
+	{
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectsMetricFullname)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vec).To(HaveLen(1))
+		Expect(vec[0].Value).To(Equal(model.SampleValue(0)))
+	}
+	// check we have registered the correct amount of (subject,namespace) pairs
+	{
+		vec, err := metricsutil.GetVector(metrics, metricsutil.SubjectNamespacePairsMetricFullname)
+		Expect(err).To(MatchError("metric family not found"))
+		Expect(vec).To(BeEmpty())
+	}
+},
+	Entry("unexpected data in cache", cache.AccessData{
+		rbacv1.Subject{Name: "1"}: []corev1.Namespace{{}, {}, {}, {}, {}},
+		rbacv1.Subject{Name: "2"}: []corev1.Namespace{{}, {}, {}, {}, {}},
+	}, errors.New("error")),
+	Entry("generic error", cache.AccessData{}, errors.New("error")),
+	Entry("context deadline exceeded error", cache.AccessData{}, errors.New("context deadline exceeded")),
 )
 
 var _ = Describe("MetricsAccessCache/TimeRequests", func() {
@@ -96,7 +134,7 @@ var _ = Describe("MetricsAccessCache/TimeRequests", func() {
 
 	It("collects time-triggered request metrics", func(ctx context.Context) {
 		nl := mocks.NewMockClientReader(ctrl)
-		nl.EXPECT().List(ctx, gomock.Any()).Return(nil).Times(1)
+		nl.EXPECT().List(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 		// when
 		cache.NewSynchronizedAccessCache(nil, nl, cache.CacheSynchronizerOptions{
