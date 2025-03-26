@@ -11,6 +11,7 @@ import (
 type CacheSynchronizerOptions struct {
 	Logger           *slog.Logger
 	ResyncPeriod     time.Duration
+	SynchTimeout     time.Duration
 	SyncErrorHandler func(context.Context, error, *SynchronizedAccessCache)
 	Metrics          AccessCacheMetrics
 }
@@ -18,6 +19,7 @@ type CacheSynchronizerOptions struct {
 var defaultCacheSynchronizerOptions = CacheSynchronizerOptions{
 	Logger:       slog.Default(),
 	ResyncPeriod: 10 * time.Minute,
+	SynchTimeout: 1 * time.Minute,
 	SyncErrorHandler: func(ctx context.Context, err error, s *SynchronizedAccessCache) {
 		s.logger.Error("error synchronizing cache", "error", err)
 	},
@@ -29,6 +31,9 @@ var defaultCacheSynchronizerOptions = CacheSynchronizerOptions{
 func (opts *CacheSynchronizerOptions) Apply(s *SynchronizedAccessCache) *SynchronizedAccessCache {
 	// add resync period
 	s.resyncPeriod = cmp.Or(opts.ResyncPeriod, defaultCacheSynchronizerOptions.ResyncPeriod)
+
+	// add synch Timeout
+	s.synchTimeout = cmp.Or(opts.SynchTimeout, max(defaultCacheSynchronizerOptions.SynchTimeout, s.resyncPeriod-time.Minute))
 
 	// add synch error handler
 	s.syncErrorHandler = opts.SyncErrorHandler
