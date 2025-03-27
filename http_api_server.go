@@ -36,8 +36,8 @@ func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceList
 	h.Handle(patternGetNamespaces,
 		addMetricsMiddleware(reg,
 			addInjectLoggerMiddleware(*l,
-				addLogRequestMiddleware(
-					addAuthnMiddleware(ar,
+				addAuthnMiddleware(ar,
+					addLogRequestMiddleware(
 						NewListNamespacesHandler(lister))))))
 
 	h.HandleFunc(patternHealthz, healthz)
