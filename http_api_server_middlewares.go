@@ -26,9 +26,8 @@ func addLogRequestMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l := getLoggerFromContext(r.Context()).With("request", r.URL.Path)
 
-		l.Debug("received request")
 		next.ServeHTTP(w, r)
-		l.Debug("request processed")
+		l.Info("request processed")
 	}
 }
 

@@ -160,18 +160,16 @@ func (s *SynchronizedAccessCache) logDumpCacheData(ctx context.Context, level sl
 func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
 	// sort the list of subjects
 	slices.SortFunc(ss, func(a, b rbacv1.Subject) int {
-		switch {
-		case a.APIGroup != b.APIGroup:
-			return strings.Compare(a.APIGroup, b.APIGroup)
-		case a.Kind != b.Kind:
-			return strings.Compare(a.Kind, b.Kind)
-		case a.Namespace != b.Namespace:
-			return strings.Compare(a.Namespace, b.Namespace)
-		case a.Name != b.Name:
-			return strings.Compare(a.Name, b.Name)
-		default:
-			return 0
+		if c := strings.Compare(a.APIGroup, b.APIGroup); c != 0 {
+			return c
 		}
+		if c := strings.Compare(a.Kind, b.Kind); c != 0 {
+			return c
+		}
+		if c := strings.Compare(a.Namespace, b.Namespace); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	// remove duplicates
