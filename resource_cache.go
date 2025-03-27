@@ -84,6 +84,9 @@ func filterNamespacesRelatedPolicyRules(pp []rbacv1.PolicyRule) []rbacv1.PolicyR
 		if slices.Contains(r.APIGroups, "") &&
 			slices.Contains(r.Resources, "namespaces") &&
 			slices.Contains(r.Verbs, "get") {
+			r.APIGroups = []string{""}
+			r.Resources = []string{"namespaces"}
+			r.Verbs = []string{"get"}
 			fr = append(fr, r)
 		}
 	}
