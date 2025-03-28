@@ -3,6 +3,7 @@ package cache
 import (
 	"cmp"
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 )
@@ -21,7 +22,15 @@ var defaultCacheSynchronizerOptions = CacheSynchronizerOptions{
 	ResyncPeriod: 10 * time.Minute,
 	SynchTimeout: 1 * time.Minute,
 	SyncErrorHandler: func(ctx context.Context, err error, s *SynchronizedAccessCache) {
-		s.logger.Error("error synchronizing cache", "error", err)
+		level := func() slog.Level {
+			// use a lower level for the SynchAlreadyRunning error
+			if errors.Is(SynchAlreadyRunningErr, err) {
+				return slog.LevelDebug
+			}
+			return slog.LevelError
+		}()
+
+		s.logger.With("error", err).Log(ctx, level, "error synchronizing cache")
 	},
 	Metrics: &NoOpAccessCacheMetrics{},
 }
