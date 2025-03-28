@@ -132,7 +132,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		time.Sleep(1 * time.Second)
 
 		// then
-		Expect(nsc.Synch(ctx)).To(MatchError(cache.SynchAlreadyRunningErr))
+		Expect(nsc.Synch(ctx)).To(MatchError(cache.ErrSynchAlreadyRunning))
 	})
 
 	It("restocks cache with empty list", func(ctx context.Context) {

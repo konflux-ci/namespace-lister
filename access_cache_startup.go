@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
-	authcache "github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	"github.com/prometheus/client_golang/prometheus"
 
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +17,7 @@ import (
 
 // buildAndStartSynchronizedAccessCache builds a SynchronizedAccessCache.
 // It registers handlers on events on resources that will trigger an AccessCache synchronization.
-func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crcache.Cache, registry prometheus.Registerer) (*authcache.SynchronizedAccessCache, error) {
+func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crcache.Cache, registry prometheus.Registerer) (*cache.SynchronizedAccessCache, error) {
 	acm, err := buildAndRegisterAccessCacheMetrics(registry)
 	if err != nil {
 		return nil, err
@@ -26,9 +25,9 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 
 	aur := &CRAuthRetriever{resourceCache, ctx}
 	sae := rbac.NewSubjectAccessEvaluator(aur, aur, aur, aur, "")
-	synchCache := authcache.NewSynchronizedAccessCache(
+	synchCache := cache.NewSynchronizedAccessCache(
 		sae,
-		resourceCache, authcache.CacheSynchronizerOptions{
+		resourceCache, cache.CacheSynchronizerOptions{
 			Logger:       getLoggerFromContext(ctx),
 			ResyncPeriod: getResyncPeriodFromEnvOrZero(ctx),
 			Metrics:      acm,
