@@ -142,7 +142,7 @@ jobs:
       - name: Determine Go version
         id: go_version
         run: |
-          echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
+          echo "version=$(go mod edit -json ./hack/tools/golang-ci/go.mod | jq -r '.Go')" >> $GITHUB_OUTPUT
 
       - name: Determine golang-ci version
         id: golangci_version
