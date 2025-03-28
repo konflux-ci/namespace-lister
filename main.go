@@ -27,8 +27,8 @@ func loadTLSCert(l *slog.Logger, certPath, keyPath string) func(*tls.Config) {
 	getCertificate := func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 		if err != nil {
-			l.Error("Unable to load TLS certificates", "error", err)
-			return nil, fmt.Errorf("Unable to load TLS certificates: %w", err)
+			l.Error("unable to load TLS certificates", "error", err)
+			return nil, fmt.Errorf("unable to load TLS certificates: %w", err)
 		}
 
 		return &cert, err

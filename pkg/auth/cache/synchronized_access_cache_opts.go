@@ -24,7 +24,7 @@ var defaultCacheSynchronizerOptions = CacheSynchronizerOptions{
 	SyncErrorHandler: func(ctx context.Context, err error, s *SynchronizedAccessCache) {
 		level := func() slog.Level {
 			// use a lower level for the SynchAlreadyRunning error
-			if errors.Is(SynchAlreadyRunningErr, err) {
+			if errors.Is(ErrSynchAlreadyRunning, err) {
 				return slog.LevelDebug
 			}
 			return slog.LevelError

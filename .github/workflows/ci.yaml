@@ -142,7 +142,7 @@ jobs:
       - name: Determine Go version
         id: go_version
         run: |
-          echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
+          echo "version=$(go mod edit -json ./hack/tools/golang-ci/go.mod | jq -r '.Go')" >> $GITHUB_OUTPUT
 
       - name: Determine golang-ci version
         id: golangci_version
@@ -157,7 +157,7 @@ jobs:
           go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Lint with golang-ci
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: ${{ steps.golangci_version.outputs.version }}
           args: --timeout=5m

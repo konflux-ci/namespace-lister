@@ -31,8 +31,8 @@ type NoOpAccessCacheMetrics struct{}
 
 func (m *NoOpAccessCacheMetrics) Collect(_ chan<- prometheus.Metric)        {}
 func (m *NoOpAccessCacheMetrics) Describe(_ chan<- *prometheus.Desc)        {}
-func (m *NoOpAccessCacheMetrics) CollectRequestMetrics(_ Event, _ bool)     { return }
-func (m *NoOpAccessCacheMetrics) CollectSynchMetrics(_ AccessData, _ error) { return }
+func (m *NoOpAccessCacheMetrics) CollectRequestMetrics(_ Event, _ bool)     {}
+func (m *NoOpAccessCacheMetrics) CollectSynchMetrics(_ AccessData, _ error) {}
 
 // accessCacheMetrics is used to collect AccessCache's metrics
 type accessCacheMetrics struct {
