@@ -157,7 +157,7 @@ jobs:
           go-version: ${{ steps.go_version.outputs.version }}
 
       - name: Lint with golang-ci
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: ${{ steps.golangci_version.outputs.version }}
           args: --timeout=5m
