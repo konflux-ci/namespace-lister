@@ -13,7 +13,7 @@ PERF_CLUSTER_PROVIDER ?= kwokctl
 PERF_CLUSTER_KUBECONFIG ?= $(PERF_OUT_DIR)/namespace-lister-perf-test
 PERF_CLUSTER_PROVIDER_FLAGS ?= --disable-qps-limits
 
-GOLANG_CI ?= $(GO) run -modfile $(ROOT_DIR)/hack/tools/golang-ci/go.mod github.com/golangci/golangci-lint/cmd/golangci-lint
+GOLANG_CI ?= $(GO) run -modfile $(ROOT_DIR)/hack/tools/golang-ci/go.mod github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 IMG ?= namespace-lister:latest
 IMAGE_BUILDER ?= docker
