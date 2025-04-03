@@ -52,7 +52,7 @@ func (r *MockStaticRoles) GetRole(namespace, name string) (*rbacv1.Role, error) 
 	if r, ok := findFunc(r.Roles, matchRole); ok {
 		return r, nil
 	}
-	return nil, errors.New("Role not found")
+	return nil, errors.New("Role not found") //nolint:staticcheck
 }
 
 func (r *MockStaticRoles) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
@@ -60,7 +60,7 @@ func (r *MockStaticRoles) GetClusterRole(name string) (*rbacv1.ClusterRole, erro
 	if r, ok := findFunc(r.ClusterRoles, matchClusterRole); ok {
 		return r, nil
 	}
-	return nil, errors.New("ClusterRole not found")
+	return nil, errors.New("ClusterRole not found") //nolint:staticcheck
 }
 
 func (r *MockStaticRoles) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {

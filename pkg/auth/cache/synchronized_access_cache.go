@@ -18,10 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var SynchAlreadyRunningErr error = errors.New("Synch operation already running")
+var ErrSynchAlreadyRunning error = errors.New("Synch operation already running")
 
 func isSynchAlreadyRunningErr(err error) bool {
-	return err != nil && errors.Is(err, SynchAlreadyRunningErr)
+	return err != nil && errors.Is(err, ErrSynchAlreadyRunning)
 }
 
 var _ AccessCache = &SynchronizedAccessCache{}
@@ -65,7 +65,7 @@ func NewSynchronizedAccessCache(
 func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	if !s.synchronizing.CompareAndSwap(false, true) {
 		// already running a synch operation
-		return SynchAlreadyRunningErr
+		return ErrSynchAlreadyRunning
 	}
 	defer s.synchronizing.Store(false)
 
@@ -126,7 +126,7 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 	}
 
 	// restock the cache
-	s.AccessCache.Restock(&c)
+	s.Restock(&c)
 
 	s.logDumpCacheData(ctx, slog.LevelDebug, c)
 	return c, nil

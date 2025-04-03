@@ -60,7 +60,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		utilruntime.Must(err)
 
 		// create resources
-		err, ans, _ = createResources(ctx, c, username, 300, 800, 1200)
+		ans, _, err = createResources(ctx, c, username, 300, 800, 1200)
 		utilruntime.Must(err)
 
 		log.Println("allowed namespaces", len(ans))
@@ -193,21 +193,21 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 	})
 })
 
-func createResources(ctx context.Context, cli client.Client, user string, numAllowedNamespaces, numUnallowedNamespaces, numNonMatchingClusterRoles int) (error, []client.Object, []client.Object) {
+func createResources(ctx context.Context, cli client.Client, user string, numAllowedNamespaces, numUnallowedNamespaces, numNonMatchingClusterRoles int) ([]client.Object, []client.Object, error) {
 	// cluster scoped resources
 	mcr, nmcr := matchingClusterRoles(1), nonMatchingClusterRoles(numNonMatchingClusterRoles)
 	ans, uns := namespaces("allowed-tenant-", numAllowedNamespaces), namespaces("unallowed-tenant-", numUnallowedNamespaces)
 	if err := create(ctx, cli, slices.Concat(mcr, nmcr, ans, uns)); err != nil {
-		return fmt.Errorf("could not create cluster scoped resources: %w", err), nil, nil
+		return nil, nil, fmt.Errorf("could not create cluster scoped resources: %w", err)
 	}
 
 	// namespace scoped resources
 	atr := allowedTenants(user, ans, 10, "ClusterRole", mcr[0].GetName(), "ClusterRole", nmcr[0].GetName())
 	utr := unallowedTenants(user, uns, 10, "ClusterRole", mcr[0].GetName(), "ClusterRole", nmcr[0].GetName())
 	if err := create(ctx, cli, slices.Concat(atr, utr)); err != nil {
-		return fmt.Errorf("could not create namespaced scoped resources: %w", err), nil, nil
+		return nil, nil, fmt.Errorf("could not create namespaced scoped resources: %w", err)
 	}
-	return nil, ans, uns
+	return ans, uns, nil
 }
 
 func create(ctx context.Context, cli client.Client, rr []client.Object) error {
@@ -361,12 +361,12 @@ func randNotPerfTestUsers(size int) []rbacv1.Subject {
 }
 
 func randNotPerfTestSubject(size int, apiGroup, kind string) []rbacv1.Subject {
-	ss := make([]rbacv1.Subject, size, size)
+	ss := make([]rbacv1.Subject, size)
 	for i := range size {
 		ss[i] = rbacv1.Subject{
 			APIGroup: apiGroup,
 			Kind:     kind,
-			Name:     fmt.Sprintf("not-the-perf-test-%s-%d", strings.ToLower(kind), rand.Int64()), //nolint:gosec,G404
+			Name:     fmt.Sprintf("not-the-perf-test-%s-%d", strings.ToLower(kind), rand.Int64()), //nolint:gosec
 		}
 	}
 	return ss
