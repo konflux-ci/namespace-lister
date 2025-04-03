@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"net/http"
@@ -11,12 +12,29 @@ import (
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
 
-// addInjectLoggerMiddleware injects the provided logger in each request context.
-// It also generates and sets a correlation ID for each request.
-func addInjectLoggerMiddleware(ol slog.Logger, next http.Handler) http.HandlerFunc {
+// addLogCorrelationIDMiddleware retrieves the correlation ID from the request's header
+// X-Correlation-ID and adds it to the logs. If the header is not present, it generates
+// a new Correlation-ID.
+func addLogCorrelationIDMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l := ol.With("correlation-id", uuid.NewUUID())
+		// get logger from context
+		l := getLoggerFromContext(r.Context())
+
+		// get Correlation ID from te request.
+		// If not present, generate a new one.
+		cid := cmp.Or(r.Header.Get("X-Correlation-ID"), string(uuid.NewUUID()))
+		l = l.With("correlation-id", cid)
+
+		// run the next handler
 		ctx := setLoggerIntoContext(r.Context(), l)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+// addInjectLoggerMiddleware injects the provided logger in each request context.
+func addInjectLoggerMiddleware(l slog.Logger, next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := setLoggerIntoContext(r.Context(), &l)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
