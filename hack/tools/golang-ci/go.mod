@@ -2,7 +2,7 @@ module github.com/konflux-ci/namespace-lister/hack/tools/golang-ci
 
 go 1.23.0
 
-toolchain go1.24.1
+toolchain go1.24.2
 
 require github.com/golangci/golangci-lint/v2 v2.0.2
 
