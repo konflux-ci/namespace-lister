@@ -2,7 +2,7 @@ module github.com/konflux-ci/namespace-lister/hack/tools/mockgen
 
 go 1.22.0
 
-require go.uber.org/mock v0.5.0
+require go.uber.org/mock v0.5.1
 
 require (
 	golang.org/x/mod v0.18.0 // indirect
