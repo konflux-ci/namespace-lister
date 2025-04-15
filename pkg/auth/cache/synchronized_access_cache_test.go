@@ -96,10 +96,10 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			Times(1)
 
 		subjectLocator.EXPECT().
-			AllowedSubjects(gomock.Any()).
+			AllowedSubjects(gomock.Any(), gomock.Any()).
 			// reply fast the first time
 			Return([]rbacv1.Subject{userSubject}, nil).
-			DoAndReturn(func(attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
+			DoAndReturn(func(ctx context.Context, attributes authorizer.Attributes) ([]rbacv1.Subject, error) {
 				// cause a timeout the second time
 				time.Sleep(100 * time.Millisecond)
 				return []rbacv1.Subject{userSubject}, nil
@@ -145,7 +145,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			}).
 			Times(1)
 		subjectLocator.EXPECT().
-			AllowedSubjects(gomock.Any()).
+			AllowedSubjects(gomock.Any(), gomock.Any()).
 			Return([]rbacv1.Subject{}, nil).
 			Times(1)
 
@@ -165,7 +165,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			}).
 			Times(1)
 		subjectLocator.EXPECT().
-			AllowedSubjects(gomock.Any()).
+			AllowedSubjects(gomock.Any(), gomock.Any()).
 			Return([]rbacv1.Subject{userSubject}, nil).
 			Times(1)
 
@@ -185,7 +185,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			}).
 			Times(1)
 		subjectLocator.EXPECT().
-			AllowedSubjects(gomock.Any()).
+			AllowedSubjects(gomock.Any(), gomock.Any()).
 			Return([]rbacv1.Subject{serviceAccountSubject}, nil).
 			Times(1)
 
@@ -205,7 +205,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			}).
 			Times(1)
 		subjectLocator.EXPECT().
-			AllowedSubjects(gomock.Any()).
+			AllowedSubjects(gomock.Any(), gomock.Any()).
 			Return([]rbacv1.Subject{groupSubject}, nil).
 			Times(1)
 
