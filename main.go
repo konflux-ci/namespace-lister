@@ -11,8 +11,11 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 func main() {
@@ -54,7 +57,8 @@ func run(l *slog.Logger) error {
 	flag.StringVar(&metricsAddress, "metrics-address", ":9100", "metrics server address.")
 	flag.Parse()
 
-	reg := NewDefaultRegistry()
+	reg := metrics.Registry
+	InitRegistry(metrics.Registry)
 
 	// get config
 	cfg := ctrl.GetConfigOrDie()
@@ -99,9 +103,22 @@ func run(l *slog.Logger) error {
 	// build and start http metrics server
 	if enableMetrics {
 		l.Info("building metrics server")
-		ms := NewMetricsServer(metricsAddress, reg).
-			WithTLS(enableTLS).
-			WithTLSOpts(loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath))
+		httpClient, err := rest.HTTPClientFor(cacheCfg.restConfig)
+		if err != nil {
+			l.Error("unable to build http client for metrics server", "error", err)
+			return err
+		}
+		ms, err := server.NewServer(server.Options{
+			SecureServing: enableTLS,
+			TLSOpts: []func(*tls.Config){
+				loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath),
+			},
+			BindAddress:    metricsAddress,
+		}, cacheCfg.restConfig, httpClient)
+		if err != nil {
+			l.Error("unable to build metrics server", "error", err)
+			return err
+		}
 
 		l.Info("starting metrics server in background")
 		go func() {
