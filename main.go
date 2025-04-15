@@ -15,6 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -114,6 +115,7 @@ func run(l *slog.Logger) error {
 				loadTLSCert(l, tlsCertificatePath, tlsCertificateKeyPath),
 			},
 			BindAddress:    metricsAddress,
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
 		}, cacheCfg.restConfig, httpClient)
 		if err != nil {
 			l.Error("unable to build metrics server", "error", err)
