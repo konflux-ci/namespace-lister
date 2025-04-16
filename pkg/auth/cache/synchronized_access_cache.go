@@ -109,7 +109,7 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 			ResourceRequest: true,
 		}
 
-		ss, err := s.subjectLocator.AllowedSubjects(ar)
+		ss, err := s.subjectLocator.AllowedSubjects(ctx, ar)
 		if err != nil {
 			// do not forward the error as it should be due
 			// to cache evicted (cluster)roles
