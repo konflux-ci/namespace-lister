@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"context"
 	"errors"
 	"slices"
 
@@ -43,7 +44,7 @@ func filterFunc[E any, S ~[]E](s S, f func(e E) bool) S {
 	return ns
 }
 
-func (r *MockStaticRoles) GetRole(namespace, name string) (*rbacv1.Role, error) {
+func (r *MockStaticRoles) GetRole(ctx context.Context, namespace, name string) (*rbacv1.Role, error) {
 	if namespace == "" {
 		return nil, errors.New("namespace is required when getting Roles")
 	}
@@ -55,7 +56,7 @@ func (r *MockStaticRoles) GetRole(namespace, name string) (*rbacv1.Role, error) 
 	return nil, errors.New("Role not found") //nolint:staticcheck
 }
 
-func (r *MockStaticRoles) GetClusterRole(name string) (*rbacv1.ClusterRole, error) {
+func (r *MockStaticRoles) GetClusterRole(ctx context.Context, name string) (*rbacv1.ClusterRole, error) {
 	matchClusterRole := func(cr *rbacv1.ClusterRole) bool { return cr.Name == name }
 	if r, ok := findFunc(r.ClusterRoles, matchClusterRole); ok {
 		return r, nil
@@ -63,7 +64,7 @@ func (r *MockStaticRoles) GetClusterRole(name string) (*rbacv1.ClusterRole, erro
 	return nil, errors.New("ClusterRole not found") //nolint:staticcheck
 }
 
-func (r *MockStaticRoles) ListRoleBindings(namespace string) ([]*rbacv1.RoleBinding, error) {
+func (r *MockStaticRoles) ListRoleBindings(ctx context.Context, namespace string) ([]*rbacv1.RoleBinding, error) {
 	if namespace == "" {
 		return nil, errors.New("namespace is required when getting RoleBindings")
 	}
@@ -72,6 +73,6 @@ func (r *MockStaticRoles) ListRoleBindings(namespace string) ([]*rbacv1.RoleBind
 	return filterFunc(r.RoleBindings, matchRoleBindings), nil
 }
 
-func (r *MockStaticRoles) ListClusterRoleBindings() ([]*rbacv1.ClusterRoleBinding, error) {
+func (r *MockStaticRoles) ListClusterRoleBindings(context.Context) ([]*rbacv1.ClusterRoleBinding, error) {
 	return r.ClusterRoleBindings, nil
 }
