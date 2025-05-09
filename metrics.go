@@ -5,14 +5,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
-func NewDefaultRegistry() *prometheus.Registry {
-	reg := prometheus.NewRegistry()
+func InitRegistry(reg prometheus.Registerer) {
 	reg.MustRegister(
-		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{
 			Namespace: "namespace_lister",
 		}),
 	)
-
-	return reg
 }
