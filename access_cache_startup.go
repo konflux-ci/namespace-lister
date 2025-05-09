@@ -23,7 +23,7 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 		return nil, err
 	}
 
-	aur := &CRAuthRetriever{resourceCache, ctx}
+	aur := &CRAuthRetriever{resourceCache}
 	sae := rbac.NewSubjectAccessEvaluator(aur, aur, aur, aur, "")
 	synchCache := cache.NewSynchronizedAccessCache(
 		sae,

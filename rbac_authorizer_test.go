@@ -22,10 +22,10 @@ var _ = Describe("CRAuthRetriever", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "ns-get"},
 		}
 		cli := fake.NewClientBuilder().WithObjects(cr).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
+		authRetriever := namespacelister.NewCRAuthRetriever(cli)
 
 		// when
-		acr, err := authRetriever.GetClusterRole(cr.Name)
+		acr, err := authRetriever.GetClusterRole(ctx, cr.Name)
 
 		// then
 		Expect(err).NotTo(HaveOccurred())
@@ -38,10 +38,10 @@ var _ = Describe("CRAuthRetriever", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "ns-get", Namespace: "myns"},
 		}
 		cli := fake.NewClientBuilder().WithObjects(r).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
+		authRetriever := namespacelister.NewCRAuthRetriever(cli)
 
 		// when
-		ar, err := authRetriever.GetRole(r.Namespace, r.Name)
+		ar, err := authRetriever.GetRole(ctx, r.Namespace, r.Name)
 
 		// then
 		Expect(err).NotTo(HaveOccurred())
@@ -56,10 +56,10 @@ var _ = Describe("CRAuthRetriever", func() {
 			&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "ns-get-1-0", Namespace: "myns-1"}},
 		}
 		cli := fake.NewClientBuilder().WithObjects(rbl...).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
+		authRetriever := namespacelister.NewCRAuthRetriever(cli)
 
 		// when
-		arbl, err := authRetriever.ListRoleBindings("myns-0")
+		arbl, err := authRetriever.ListRoleBindings(ctx, "myns-0")
 
 		// then
 		Expect(err).NotTo(HaveOccurred())
@@ -74,10 +74,10 @@ var _ = Describe("CRAuthRetriever", func() {
 			&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "ns-get-2"}},
 		}
 		cli := fake.NewClientBuilder().WithObjects(crbl...).Build()
-		authRetriever := namespacelister.NewCRAuthRetriever(ctx, cli)
+		authRetriever := namespacelister.NewCRAuthRetriever(cli)
 
 		// when
-		acrbl, err := authRetriever.ListClusterRoleBindings()
+		acrbl, err := authRetriever.ListClusterRoleBindings(ctx)
 
 		// then
 		Expect(err).NotTo(HaveOccurred())

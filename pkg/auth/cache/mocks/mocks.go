@@ -44,18 +44,18 @@ func (m *MockSubjectLocator) EXPECT() *MockSubjectLocatorMockRecorder {
 }
 
 // AllowedSubjects mocks base method.
-func (m *MockSubjectLocator) AllowedSubjects(attributes authorizer.Attributes) ([]v1.Subject, error) {
+func (m *MockSubjectLocator) AllowedSubjects(ctx context.Context, attributes authorizer.Attributes) ([]v1.Subject, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AllowedSubjects", attributes)
+	ret := m.ctrl.Call(m, "AllowedSubjects", ctx, attributes)
 	ret0, _ := ret[0].([]v1.Subject)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AllowedSubjects indicates an expected call of AllowedSubjects.
-func (mr *MockSubjectLocatorMockRecorder) AllowedSubjects(attributes any) *gomock.Call {
+func (mr *MockSubjectLocatorMockRecorder) AllowedSubjects(ctx, attributes any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowedSubjects", reflect.TypeOf((*MockSubjectLocator)(nil).AllowedSubjects), attributes)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowedSubjects", reflect.TypeOf((*MockSubjectLocator)(nil).AllowedSubjects), ctx, attributes)
 }
 
 // MockClientReader is a mock of ClientReader interface.
