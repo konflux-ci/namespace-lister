@@ -14,7 +14,7 @@ require (
 	k8s.io/apimachinery v0.32.3
 	k8s.io/apiserver v0.32.3
 	k8s.io/client-go v0.32.3
-	k8s.io/kube-openapi v0.0.0-20250304201544-e5f78fe3ede9
+	k8s.io/kube-openapi v0.0.0-20250610211856-8b98d1ed966a
 	k8s.io/kubernetes v1.32.3
 	sigs.k8s.io/controller-runtime v0.20.4
 )
