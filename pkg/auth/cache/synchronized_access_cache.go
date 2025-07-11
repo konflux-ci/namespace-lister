@@ -18,6 +18,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	VirtualLabelAnnotationDomainKey      = "virtual.konflux-ci.dev/"
+	VirtualLabelKeyAccess                = VirtualLabelAnnotationDomainKey + "access"
+	VirtualAnnotationKeySubjectName      = VirtualLabelAnnotationDomainKey + "subject-name"
+	VirtualAnnotationKeySubjectNamespace = VirtualLabelAnnotationDomainKey + "subject-namespace"
+)
+
 var ErrSynchAlreadyRunning error = errors.New("Synch operation already running")
 
 func isSynchAlreadyRunningErr(err error) bool {
@@ -120,8 +127,10 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 		ss = s.removeDuplicateSubjects(ss)
 
 		// store in temp cache
-		for _, s := range ss {
-			c[s] = append(c[s], ns)
+		for _, sub := range ss {
+			lns := s.withVirtualLabelsAndAnnotationsForAccess(ns, sub)
+
+			c[sub] = append(c[sub], lns)
 		}
 	}
 
@@ -130,6 +139,36 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 
 	s.logDumpCacheData(ctx, slog.LevelDebug, c)
 	return c, nil
+}
+
+func (s *SynchronizedAccessCache) withVirtualLabelsAndAnnotationsForAccess(ns corev1.Namespace, sub rbacv1.Subject) corev1.Namespace {
+	// we need to deepcopy otherwise we'll have side effects
+	lns := ns.DeepCopy()
+
+	// calculate data
+	lkind := strings.ToLower(sub.Kind)
+
+	// add labels
+	ll := lns.GetLabels()
+	if ll == nil {
+		ll = map[string]string{}
+	}
+	ll[VirtualLabelKeyAccess] = lkind
+	lns.Labels = ll
+
+	// add annotations
+	aa := lns.GetAnnotations()
+	if aa == nil {
+		aa = map[string]string{}
+	}
+	aa[VirtualAnnotationKeySubjectName] = sub.Name
+	if sub.Namespace != "" {
+		aa[VirtualAnnotationKeySubjectNamespace] = sub.Namespace
+	}
+	lns.Annotations = aa
+
+	// return copy
+	return *lns
 }
 
 func (s *SynchronizedAccessCache) logDumpCacheData(ctx context.Context, level slog.Level, c AccessData) {
