@@ -49,7 +49,7 @@ var _ = Describe("VisibilityVirtualLabel", func() {
 
 			nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
-			Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
+			Expect(nsc.Synch(ctx)).To(Succeed())
 			Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccessPrivate))
 		})
 	})
