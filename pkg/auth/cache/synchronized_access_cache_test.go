@@ -29,7 +29,7 @@ var (
 	groupSubject = rbacv1.Subject{
 		Kind:     rbacv1.GroupKind,
 		APIGroup: rbacv1.SchemeGroupVersion.Group,
-		Name:     "myuser",
+		Name:     "mygroup",
 	}
 
 	serviceAccountSubject = rbacv1.Subject{
@@ -44,6 +44,55 @@ var (
 				Name:        "myns",
 				Labels:      map[string]string{"key": "value"},
 				Annotations: map[string]string{"key": "value"},
+			},
+		},
+	}
+
+	expectedNamespacesUserAccess = []corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					cache.VirtualLabelKeyAccess: "user",
+					"key":                       "value",
+				},
+				Annotations: map[string]string{
+					cache.VirtualAnnotationKeySubjectName: userSubject.Name,
+					"key":                                 "value",
+				},
+			},
+		},
+	}
+
+	expectedNamespacesServiceAccountAccess = []corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					cache.VirtualLabelKeyAccess: "serviceaccount",
+					"key":                       "value",
+				},
+				Annotations: map[string]string{
+					cache.VirtualAnnotationKeySubjectName:      serviceAccountSubject.Name,
+					cache.VirtualAnnotationKeySubjectNamespace: serviceAccountSubject.Namespace,
+					"key": "value",
+				},
+			},
+		},
+	}
+
+	expectedNamespacesGroupAccess = []corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					cache.VirtualLabelKeyAccess: "group",
+					"key":                       "value",
+				},
+				Annotations: map[string]string{
+					cache.VirtualAnnotationKeySubjectName: groupSubject.Name,
+					"key":                                 "value",
+				},
 			},
 		},
 	}
@@ -78,7 +127,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 			To(MatchError("context deadline exceeded"))
 	})
 
-	It("will return empty data if timed-out", Label("aaa"), func(ctx context.Context) {
+	It("will return empty data if timed-out", func(ctx context.Context) {
 		// given
 		namespaceLister := mocks.NewMockClientReader(ctrl)
 		namespaceLister.EXPECT().
@@ -172,7 +221,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(namespaces))
+		Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccess))
 	})
 
 	It("matches ServiceAccount after synch", func(ctx context.Context) {
@@ -192,7 +241,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(serviceAccountSubject)).To(ConsistOf(namespaces))
+		Expect(nsc.AccessCache.List(serviceAccountSubject)).To(ConsistOf(expectedNamespacesServiceAccountAccess))
 	})
 
 	It("does cache Groups", func(ctx context.Context) {
@@ -212,7 +261,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(groupSubject)).To(ConsistOf(namespaces))
+		Expect(nsc.AccessCache.List(groupSubject)).To(ConsistOf(expectedNamespacesGroupAccess))
 	})
 })
 
@@ -232,7 +281,7 @@ var _ = DescribeTable("duplicate results", func(ctx context.Context, sr *mocks.M
 	nsc := cache.NewSynchronizedAccessCache(realSubjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 	Expect(nsc.Synch(ctx)).To(Succeed())
-	Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(namespaces))
+	Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccess))
 },
 	Entry("does not produce duplicates with multiple RoleBindings to access ClusterRole", &mocks.MockStaticRoles{
 		ClusterRoles: []*rbacv1.ClusterRole{
