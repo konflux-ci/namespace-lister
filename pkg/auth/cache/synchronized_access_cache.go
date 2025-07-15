@@ -19,8 +19,14 @@ import (
 )
 
 const (
-	VirtualLabelAnnotationDomainKey      = "virtual.konflux-ci.dev/"
-	VirtualLabelKeyAccess                = VirtualLabelAnnotationDomainKey + "access"
+	VirtualLabelAnnotationDomainKey = "virtual.konflux-ci.dev/"
+
+	VirtualLabelKeyAccess     = VirtualLabelAnnotationDomainKey + "access"
+	VirtualLabelKeyVisibility = VirtualLabelAnnotationDomainKey + "visibility"
+
+	VirtualLabelValueVisibilityAuthenticated = "authenticated"
+	VirtualLabelValueVisibilityPrivate       = "private"
+
 	VirtualAnnotationKeySubjectName      = VirtualLabelAnnotationDomainKey + "subject-name"
 	VirtualAnnotationKeySubjectNamespace = VirtualLabelAnnotationDomainKey + "subject-namespace"
 )
@@ -126,6 +132,9 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 		// remove duplicates from allowed subjects
 		ss = s.removeDuplicateSubjects(ss)
 
+		// enforce visibility label
+		s.setVisibilityVirtualLabel(&ns, ss)
+
 		// store in temp cache
 		for _, sub := range ss {
 			lns := s.withVirtualLabelsAndAnnotationsForAccess(ns, sub)
@@ -139,6 +148,31 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 
 	s.logDumpCacheData(ctx, slog.LevelDebug, c)
 	return c, nil
+}
+
+func (s *SynchronizedAccessCache) setVisibilityVirtualLabel(ns *corev1.Namespace, subs []rbacv1.Subject) {
+	// system:authenticated matcher function
+	isSystemAuthenticatedGroup := func(sub rbacv1.Subject) bool {
+		return sub.APIGroup == rbacv1.GroupName &&
+			sub.Kind == rbacv1.GroupKind &&
+			sub.Name == "system:authenticated"
+	}
+
+	// retrieve Labels
+	ll := ns.GetLabels()
+	if ll == nil {
+		ll = map[string]string{}
+	}
+
+	// if namespace is shared with `system:authenticated` group,
+	// then the visibility virtual label is set to `authenticated`
+	if slices.ContainsFunc(subs, isSystemAuthenticatedGroup) {
+		ll[VirtualLabelKeyVisibility] = VirtualLabelValueVisibilityAuthenticated
+		return
+	}
+
+	// otherwise visibility virtual label is set to `private`
+	ll[VirtualLabelKeyVisibility] = VirtualLabelValueVisibilityPrivate
 }
 
 func (s *SynchronizedAccessCache) withVirtualLabelsAndAnnotationsForAccess(ns corev1.Namespace, sub rbacv1.Subject) corev1.Namespace {

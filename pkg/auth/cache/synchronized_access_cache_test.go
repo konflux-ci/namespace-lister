@@ -48,13 +48,31 @@ var (
 		},
 	}
 
-	expectedNamespacesUserAccess = []corev1.Namespace{
+	expectedNamespacesUserAccessPrivate = []corev1.Namespace{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "myns",
 				Labels: map[string]string{
-					cache.VirtualLabelKeyAccess: "user",
-					"key":                       "value",
+					cache.VirtualLabelKeyVisibility: cache.VirtualLabelValueVisibilityPrivate,
+					cache.VirtualLabelKeyAccess:     "user",
+					"key":                           "value",
+				},
+				Annotations: map[string]string{
+					cache.VirtualAnnotationKeySubjectName: userSubject.Name,
+					"key":                                 "value",
+				},
+			},
+		},
+	}
+
+	expectedNamespacesUserAccessAuthenticated = []corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					cache.VirtualLabelKeyVisibility: cache.VirtualLabelValueVisibilityAuthenticated,
+					cache.VirtualLabelKeyAccess:     "user",
+					"key":                           "value",
 				},
 				Annotations: map[string]string{
 					cache.VirtualAnnotationKeySubjectName: userSubject.Name,
@@ -69,8 +87,9 @@ var (
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "myns",
 				Labels: map[string]string{
-					cache.VirtualLabelKeyAccess: "serviceaccount",
-					"key":                       "value",
+					cache.VirtualLabelKeyAccess:     "serviceaccount",
+					cache.VirtualLabelKeyVisibility: cache.VirtualLabelValueVisibilityPrivate,
+					"key":                           "value",
 				},
 				Annotations: map[string]string{
 					cache.VirtualAnnotationKeySubjectName:      serviceAccountSubject.Name,
@@ -86,8 +105,9 @@ var (
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "myns",
 				Labels: map[string]string{
-					cache.VirtualLabelKeyAccess: "group",
-					"key":                       "value",
+					cache.VirtualLabelKeyAccess:     "group",
+					cache.VirtualLabelKeyVisibility: cache.VirtualLabelValueVisibilityPrivate,
+					"key":                           "value",
 				},
 				Annotations: map[string]string{
 					cache.VirtualAnnotationKeySubjectName: groupSubject.Name,
@@ -221,7 +241,7 @@ var _ = Describe("SynchronizedAccessCache", func() {
 		nsc := cache.NewSynchronizedAccessCache(subjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 		Expect(nsc.Synch(ctx)).ToNot(HaveOccurred())
-		Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccess))
+		Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccessPrivate))
 	})
 
 	It("matches ServiceAccount after synch", func(ctx context.Context) {
@@ -281,7 +301,7 @@ var _ = DescribeTable("duplicate results", func(ctx context.Context, sr *mocks.M
 	nsc := cache.NewSynchronizedAccessCache(realSubjectLocator, namespaceLister, cache.CacheSynchronizerOptions{})
 
 	Expect(nsc.Synch(ctx)).To(Succeed())
-	Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccess))
+	Expect(nsc.AccessCache.List(userSubject)).To(ConsistOf(expectedNamespacesUserAccessPrivate))
 },
 	Entry("does not produce duplicates with multiple RoleBindings to access ClusterRole", &mocks.MockStaticRoles{
 		ClusterRoles: []*rbacv1.ClusterRole{
