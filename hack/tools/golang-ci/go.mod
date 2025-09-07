@@ -1,6 +1,8 @@
 module github.com/konflux-ci/namespace-lister/hack/tools/golang-ci
 
-go 1.23.0
+go 1.24.0
+
+toolchain go1.24.6
 
 require github.com/golangci/golangci-lint/v2 v2.0.2
 
@@ -187,7 +189,7 @@ require (
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20250711185948-6ae5c78190dc // indirect
 	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.34.0 // indirect
