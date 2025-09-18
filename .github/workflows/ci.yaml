@@ -24,7 +24,7 @@ jobs:
           echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
@@ -45,7 +45,7 @@ jobs:
           echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
@@ -85,7 +85,7 @@ jobs:
           echo "version=$(go mod edit -json | jq -r '.Go')" >> $GITHUB_OUTPUT
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
@@ -110,7 +110,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -140,7 +140,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: hack/tools/golang-ci/go.mod
 
