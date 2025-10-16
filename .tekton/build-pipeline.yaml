@@ -155,31 +155,6 @@ spec:
           workspace: git-auth
         - name: netrc
           workspace: netrc
-    - name: run-script
-      params:
-        - name: ociStorage
-          value: $(params.output-image).script
-        - name: ociArtifactExpiresAfter
-          value: $(params.image-expires-after)
-        - name: SCRIPT_RUNNER_IMAGE
-          value: quay.io/konflux-ci/git-clone@sha256:4e53ebd9242f05ca55bfc8d58b3363d8b9d9bc3ab439d9ab76cdbdf5b1fd42d9
-        - name: SCRIPT
-          value: ./submodule.sh
-        - name: HERMETIC
-          value: $(params.hermetic)
-        - name: SOURCE_ARTIFACT
-          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-      runAfter:
-        - prefetch-dependencies
-      taskRef:
-        params:
-          - name: name
-            value: run-script-oci-ta
-          - name: bundle
-            value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:f9da978968a256edbefdbe615ae2fdc2652f81e9ea325a07e2e1c1fa45f52b9b
-          - name: kind
-            value: task
-        resolver: bundles
     - matrix:
         params:
           - name: PLATFORM
@@ -207,16 +182,13 @@ spec:
         - name: BUILD_ARGS_FILE
           value: $(params.build-args-file)
         - name: SOURCE_ARTIFACT
-          value: $(tasks.run-script.results.SCRIPT_ARTIFACT)
+          value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
         - name: CACHI2_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: IMAGE_APPEND_PLATFORM
           value: 'true'
-        - name: ADDITIONAL_BASE_IMAGES
-          value:
-            - $(tasks.run-script.results.SCRIPT_RUNNER_IMAGE_REFERENCE)
       runAfter:
-        - run-script
+        - prefetch-dependencies
       taskRef:
         params:
           - name: name
