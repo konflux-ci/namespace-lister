@@ -22,8 +22,6 @@ spec:
     value: '{{revision}}'
   - name: output-image
     value: quay.io/redhat-user-workloads/konflux-tenant-ops-tenant/namespace-lister:{{revision}}
-  - name: image-expires-after
-    value: 5d
   - name: path-context
     value: .
   - name: build-platforms
