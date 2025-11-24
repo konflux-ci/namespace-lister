@@ -14,10 +14,15 @@ Feature: List Namespaces
     Given User is not authenticated
     Then  the User request is rejected with unauthorized error
 
-  Scenario: ClusterRoleBindings are ignored
+  Scenario: Unlabeled ClusterRoleBindings are ignored
     Given the ServiceAccount has Cluster-scoped get permission on namespaces
     Given 10 tenant namespaces exist
     Then the ServiceAccount retrieves no namespaces
+
+  Scenario: Labeled ClusterRoleBindings are not ignored
+    Given the ServiceAccount has labeled Cluster-scoped get permission on namespaces
+    Given 10 tenant namespaces exist
+    Then the ServiceAccount retrieves namespaces
 
   Scenario: user has no namespaces, authenticated group does
     Given User has access to "0" namespaces

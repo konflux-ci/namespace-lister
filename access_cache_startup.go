@@ -37,6 +37,7 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 	// register event handlers on resource cache
 	oo := []client.Object{
 		&corev1.Namespace{},
+		&rbacv1.ClusterRoleBinding{},
 		&rbacv1.RoleBinding{},
 		&rbacv1.ClusterRole{},
 		&rbacv1.Role{},

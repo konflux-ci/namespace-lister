@@ -27,13 +27,15 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Given(`^Group "([^"]*)" has access to "([^"]*)" namespaces$`, GroupHasAccessToNNamespaces)
 	ctx.Given(`^User is part of group "([^"]*)"$`, UserIsPartOfGroup)
 	ctx.Given(`^the ServiceAccount has Cluster-scoped get permission on namespaces$`, UserInfoHasClusterScopedGetPermissionOnNamespaces)
+	ctx.Given(`^the ServiceAccount has labeled Cluster-scoped get permission on namespaces$`, UserInfoHasLabeledClusterScopedListPermissionOnNamespaces)
 	ctx.Given(`^(\d+) tenant namespaces exist$`, NTenantNamespacesExist)
 
 	ctx.Then(`^the ServiceAccount can retrieve the namespaces they and their groups have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User can retrieve the namespaces they and their groups have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the ServiceAccount can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
-	ctx.Then(`^the ServiceAccount retrieves no namespaces$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
+	ctx.Then(`^the ServiceAccount retrieves namespaces$`, TheUserRetrievesNamespaces)
+	ctx.Then(`^the ServiceAccount retrieves no namespaces$`, TheUserRetrievesNoNamespaces)
 	ctx.Then(`^the User request is rejected with unauthorized error$`, userRequestIsRejectedWithUnauthorizerError)
 }
 
@@ -79,6 +81,38 @@ func NTenantNamespacesExist(ctx context.Context, limit int) (context.Context, er
 	return ctx, nil
 }
 
+func UserInfoHasLabeledClusterScopedListPermissionOnNamespaces(ctx context.Context) (context.Context, error) {
+	user := tcontext.User(ctx)
+
+	cli, err := arest.BuildDefaultHostClient()
+	if err != nil {
+		return ctx, err
+	}
+
+	// ensure the cluster role get-namespace exists
+	cr := &rbacv1.ClusterRole{}
+	if err := cli.Get(ctx, types.NamespacedName{Name: "namespace-get"}, cr); err != nil {
+		return ctx, err
+	}
+
+	cli.Create(ctx, &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("test-%s-get-namespaces", user.Name),
+			Labels: map[string]string{
+				"namespace-lister.konflux-ci.dev/use-for-access": "true",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Name:     cr.Name,
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+		},
+		Subjects: []rbacv1.Subject{user.AsSubject()},
+	})
+
+	return ctx, nil
+}
+
 func UserInfoHasClusterScopedGetPermissionOnNamespaces(ctx context.Context) (context.Context, error) {
 	user := tcontext.User(ctx)
 
@@ -102,7 +136,9 @@ func UserInfoHasClusterScopedGetPermissionOnNamespaces(ctx context.Context) (con
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole",
 		},
-		Subjects: []rbacv1.Subject{user.AsSubject()},
+		Subjects: []rbacv1.Subject{
+			user.AsSubject(),
+		},
 	})
 
 	return ctx, nil
@@ -180,6 +216,40 @@ func subjectHasAccessToNNamespaces(ctx context.Context, subject rbacv1.Subject, 
 	}
 
 	return tcontext.WithNamespaces(ctx, nn), nil
+}
+
+func TheUserRetrievesNamespaces(ctx context.Context) (context.Context, error) {
+	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
+	return ctx, wait.PollUntilContextTimeout(ctx, 2*time.Second, 1*time.Minute, false, func(ctx context.Context) (done bool, err error) {
+		ann := corev1.NamespaceList{}
+		if err := cli.List(ctx, &ann); err != nil {
+			log.Printf("error listing namespaces: %v", err)
+			return false, nil
+		}
+
+		return len(ann.Items) > 0, nil
+	})
+}
+
+func TheUserRetrievesNoNamespaces(ctx context.Context) (context.Context, error) {
+	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
+	return ctx, wait.PollUntilContextTimeout(ctx, 2*time.Second, 1*time.Minute, false, func(ctx context.Context) (done bool, err error) {
+		ann := corev1.NamespaceList{}
+		if err := cli.List(ctx, &ann); err != nil {
+			log.Printf("error listing namespaces: %v", err)
+			return false, nil
+		}
+
+		return len(ann.Items) == 0, nil
+	})
 }
 
 func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (context.Context, error) {
