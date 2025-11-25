@@ -123,6 +123,15 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
 				Label: cfg.namespacesLabelSector,
+				Transform: mergeTransformFunc(
+					cache.TransformStripManagedFields(),
+					func(i any) (any, error) {
+						ns := i.(*corev1.Namespace)
+						ns.Spec = corev1.NamespaceSpec{}
+						ns.Status = corev1.NamespaceStatus{}
+						return i, nil
+					},
+				),
 			},
 			&rbacv1.ClusterRole{}: {
 				Transform: trimClusterRole(),
