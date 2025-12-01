@@ -31,7 +31,7 @@ func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
 	}
 
 	user := tcontext.User(ctx)
-	cfg.Impersonate.UserName = user.Name
+	cfg.Impersonate.UserName = user.FullName()
 	cfg.Impersonate.Groups = user.Groups
 
 	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)

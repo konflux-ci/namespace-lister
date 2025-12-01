@@ -1,6 +1,8 @@
 package context
 
 import (
+	"fmt"
+
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -42,4 +44,11 @@ func (u *UserInfo) AsSubject() rbacv1.Subject {
 		APIGroup:  u.APIGroup,
 		Kind:      u.Kind,
 	}
+}
+
+func (u *UserInfo) FullName() string {
+	if u.Kind == "ServiceAccount" {
+		return fmt.Sprintf("system:serviceaccount:%s:%s", u.Namespace, u.Name)
+	}
+	return u.Name
 }

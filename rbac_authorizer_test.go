@@ -81,6 +81,6 @@ var _ = Describe("CRAuthRetriever", func() {
 
 		// then
 		Expect(err).NotTo(HaveOccurred())
-		Expect(acrbl).To(BeEmpty())
+		Expect(acrbl).To(ConsistOf(crbl))
 	})
 })

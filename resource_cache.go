@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -114,11 +115,12 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 		&corev1.Namespace{},
 		&rbacv1.RoleBinding{},
 		&rbacv1.ClusterRole{},
+		&rbacv1.ClusterRoleBinding{},
 		&rbacv1.Role{},
 	}
 	c, err := cache.New(cfg.restConfig, cache.Options{
 		Scheme:                       s,
-		DefaultUnsafeDisableDeepCopy: ptr(true),
+		DefaultUnsafeDisableDeepCopy: ptr.To(true),
 		ReaderFailOnMissingInformer:  true,
 		ByObject: map[client.Object]cache.ByObject{
 			&corev1.Namespace{}: {
@@ -144,6 +146,16 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 			},
 			&rbacv1.Role{}: {
 				Transform: trimRole(),
+			},
+			&rbacv1.ClusterRoleBinding{}: {
+				Transform: mergeTransformFunc(
+					cache.TransformStripManagedFields(),
+					trimAnnotations(),
+				),
+				Label: labels.SelectorFromSet(
+					labels.Set{
+						"namespace-lister.konflux-ci.dev/use-for-access": "true",
+					}),
 			},
 		},
 	})
@@ -172,8 +184,4 @@ func BuildAndStartResourceCache(ctx context.Context, cfg *cacheConfig) (cache.Ca
 	}
 
 	return c, nil
-}
-
-func ptr[T any](t T) *T {
-	return &t
 }

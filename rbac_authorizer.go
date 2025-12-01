@@ -72,6 +72,15 @@ func (r *CRAuthRetriever) GetClusterRole(ctx context.Context, name string) (*rba
 }
 
 // ListClusterRoleBindings retrieves ClusterRoleBindings
-func (r *CRAuthRetriever) ListClusterRoleBindings(context.Context) ([]*rbacv1.ClusterRoleBinding, error) {
-	return make([]*rbacv1.ClusterRoleBinding, 0), nil
+func (r *CRAuthRetriever) ListClusterRoleBindings(ctx context.Context) ([]*rbacv1.ClusterRoleBinding, error) {
+	crbb := rbacv1.ClusterRoleBindingList{}
+	if err := r.cli.List(ctx, &crbb); err != nil {
+		return nil, err
+	}
+
+	crbbp := make([]*rbacv1.ClusterRoleBinding, len(crbb.Items))
+	for i, rb := range crbb.Items {
+		crbbp[i] = rb.DeepCopy()
+	}
+	return crbbp, nil
 }

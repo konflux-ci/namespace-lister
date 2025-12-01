@@ -27,7 +27,7 @@ In this setup any request to `/api/v1/namespaces` with the `Impersonate-User` He
 You can just forge a new request with the header value set to whichever user you want to impersonate:
 
 ```
-curl -sk -X GET https://localhost:10443/api/v1/namespaces -H 'Impersonate-User: any-user-i-like'
+curl -sk -X GET https://localhost:11443/api/v1/namespaces -H 'Impersonate-User: any-user-i-like'
 ```
 
 The other requests will be forwarded to the Kubernetes APIServer, thus they'll also be validated.
