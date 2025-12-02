@@ -3,8 +3,8 @@ module github.com/konflux-ci/namespace-lister/acceptance
 go 1.24.0
 
 require (
-	github.com/cucumber/godog v0.15.0
-	github.com/spf13/pflag v1.0.6
+	github.com/cucumber/godog v0.15.1
+	github.com/spf13/pflag v1.0.7
 	k8s.io/api v0.34.2
 	k8s.io/apimachinery v0.34.2
 	k8s.io/client-go v0.34.2
