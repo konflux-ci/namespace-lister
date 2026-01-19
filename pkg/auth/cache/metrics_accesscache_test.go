@@ -27,7 +27,7 @@ var _ = Describe("MetricsAccessCache/FailedSynch", func() {
 
 	It("collects failed synch metrics for empty access data", func(ctx context.Context) {
 		// when
-		metrics.CollectSynchMetrics(cache.AccessData{}, errors.New("err"))
+		metrics.CollectSynchMetrics(.0, cache.AccessData{}, errors.New("err"))
 
 		// then
 		vec, err := metricsutil.GetVector(metrics, metricsutil.SyncMetricFullname)
@@ -44,7 +44,7 @@ var _ = DescribeTable("MetricsAccessCache/SuccessfulSynch", func(data cache.Acce
 	metrics := cache.NewAccessCacheMetrics()
 
 	// when
-	metrics.CollectSynchMetrics(data, err)
+	metrics.CollectSynchMetrics(.0, data, err)
 
 	// then
 	// check that the synch operation has been executed
@@ -86,7 +86,7 @@ var _ = DescribeTable("MetricsAccessCache/UnsuccessfulSynch", func(data cache.Ac
 	metrics := cache.NewAccessCacheMetrics()
 
 	// when
-	metrics.CollectSynchMetrics(data, err)
+	metrics.CollectSynchMetrics(.0, data, err)
 
 	// then
 	// check that the synch operation has been executed

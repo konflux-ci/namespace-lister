@@ -36,3 +36,74 @@ func GetVector(collector prometheus.Collector, name string) (model.Vector, error
 
 	return expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mf)
 }
+
+// GetHistogramSum returns the sum of all observed values for a histogram metric with matching labels.
+// For histograms, this extracts the _sum metric.
+func GetHistogramSum(collector prometheus.Collector, name string, labelMatchers map[string]string) (float64, error) {
+	vec, err := GetVector(collector, name)
+	if err != nil {
+		return 0, err
+	}
+
+	sumName := name + "_sum"
+	for _, sample := range vec {
+		sn := string(sample.Metric[model.MetricNameLabel])
+		if sn == sumName && matchesLabels(sample.Metric, labelMatchers) {
+			return float64(sample.Value), nil
+		}
+	}
+
+	return 0, errors.New("histogram sum not found with matching labels")
+}
+
+// GetHistogramCount returns the count of observations for a histogram metric with matching labels.
+// For histograms, this extracts the _count metric.
+func GetHistogramCount(collector prometheus.Collector, name string, labelMatchers map[string]string) (float64, error) {
+	vec, err := GetVector(collector, name)
+	if err != nil {
+		return 0, err
+	}
+
+	countName := name + "_count"
+	for _, sample := range vec {
+		sn := string(sample.Metric[model.MetricNameLabel])
+		if sn == countName && matchesLabels(sample.Metric, labelMatchers) {
+			return float64(sample.Value), nil
+		}
+	}
+
+	return 0, errors.New("histogram count not found with matching labels")
+}
+
+// GetHistogramSamples returns all bucket samples for a histogram metric, optionally filtered by labels.
+// Note: This only returns bucket samples. Use GetHistogramSum and GetHistogramCount for sum and count metrics.
+func GetHistogramSamples(collector prometheus.Collector, name string, labelMatchers map[string]string) (model.Vector, error) {
+	bucketName := name + "_bucket"
+	vec, err := GetVector(collector, bucketName)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(labelMatchers) == 0 {
+		return vec, nil
+	}
+
+	var filtered model.Vector
+	for _, sample := range vec {
+		if matchesLabels(sample.Metric, labelMatchers) {
+			filtered = append(filtered, sample)
+		}
+	}
+
+	return filtered, nil
+}
+
+// matchesLabels checks if a metric's labels match all the provided label matchers.
+func matchesLabels(metric model.Metric, matchers map[string]string) bool {
+	for key, value := range matchers {
+		if metric[model.LabelName(key)] != model.LabelValue(value) {
+			return false
+		}
+	}
+	return true
+}

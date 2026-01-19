@@ -23,16 +23,16 @@ type AccessCacheMetrics interface {
 	// CollectRequestMetrics collects metrics on synchronization requests
 	CollectRequestMetrics(Event, bool)
 	// CollectSynchMetrics collects metrics on synchronization runs
-	CollectSynchMetrics(AccessData, error)
+	CollectSynchMetrics(float64, AccessData, error)
 }
 
 // NoOpAccessCacheMetrics is used to disable AccessCache's metrics
 type NoOpAccessCacheMetrics struct{}
 
-func (m *NoOpAccessCacheMetrics) Collect(_ chan<- prometheus.Metric)        {}
-func (m *NoOpAccessCacheMetrics) Describe(_ chan<- *prometheus.Desc)        {}
-func (m *NoOpAccessCacheMetrics) CollectRequestMetrics(_ Event, _ bool)     {}
-func (m *NoOpAccessCacheMetrics) CollectSynchMetrics(_ AccessData, _ error) {}
+func (m *NoOpAccessCacheMetrics) Collect(_ chan<- prometheus.Metric)                   {}
+func (m *NoOpAccessCacheMetrics) Describe(_ chan<- *prometheus.Desc)                   {}
+func (m *NoOpAccessCacheMetrics) CollectRequestMetrics(_ Event, _ bool)                {}
+func (m *NoOpAccessCacheMetrics) CollectSynchMetrics(_ float64, _ AccessData, _ error) {}
 
 // accessCacheMetrics is used to collect AccessCache's metrics
 type accessCacheMetrics struct {
@@ -42,6 +42,8 @@ type accessCacheMetrics struct {
 	subjectNamespacePairsCounter *prometheus.GaugeVec
 	// synchGauge counts the number of cache synchronization
 	synchGauge *prometheus.CounterVec
+	//synchDuration tracks duration of each synch cycle
+	synchDuration *prometheus.HistogramVec
 
 	// resourceRequestsGauge counts the number of cache synchronization
 	// requested as a consequence of resource events
@@ -91,12 +93,37 @@ func NewAccessCacheMetrics() AccessCacheMetrics {
 		}, []string{
 			"status",
 		}),
+		synchDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Namespace: "namespace_lister",
+			Subsystem: "accesscache",
+			Name:      "synch_duration_milliseconds",
+			Help:      "duration of the synchronization routine",
+			Buckets: []float64{
+				10,
+				50,
+				100,
+				200,
+				500,
+				1000,           // 1s
+				10 * 1000,      // 10s
+				30 * 1000,      // 30s
+				60 * 1000,      // 60s
+				2 * 60 * 1000,  // 2m
+				5 * 60 * 1000,  // 5m
+				10 * 60 * 1000, // 10m
+				30 * 60 * 1000, // 30m
+				60 * 60 * 1000, // 60m
+			},
+		}, []string{
+			"status",
+		}),
 	}
 }
 
 func (m *accessCacheMetrics) Collect(ch chan<- prometheus.Metric) {
 	m.resourceRequestsGauge.Collect(ch)
 	m.timeRequestsGauge.Collect(ch)
+	m.synchDuration.Collect(ch)
 
 	m.subjectCounter.Collect(ch)
 	m.subjectNamespacePairsCounter.Collect(ch)
@@ -106,6 +133,7 @@ func (m *accessCacheMetrics) Collect(ch chan<- prometheus.Metric) {
 func (m *accessCacheMetrics) Describe(ch chan<- *prometheus.Desc) {
 	m.resourceRequestsGauge.Describe(ch)
 	m.timeRequestsGauge.Describe(ch)
+	m.synchDuration.Describe(ch)
 
 	m.subjectCounter.Describe(ch)
 	m.subjectNamespacePairsCounter.Describe(ch)
@@ -143,12 +171,18 @@ func (m *accessCacheMetrics) collectResourceEventRequestMetrics(status string) {
 	m.resourceRequestsGauge.With(labels).Inc()
 }
 
-func (s *accessCacheMetrics) CollectSynchMetrics(cacheData AccessData, err error) {
+func (s *accessCacheMetrics) CollectSynchMetrics(duration float64, cacheData AccessData, err error) {
 	if err != nil {
+		// store synch duration
+		s.synchDuration.With(prometheus.Labels{"status": "failed"}).Observe(duration)
+
 		// increment failed synchronization counter
 		s.synchGauge.With(prometheus.Labels{"status": "failed", "error": err.Error()}).Inc()
 		return
 	}
+
+	// store synch duration
+	s.synchDuration.With(prometheus.Labels{"status": "completed"}).Observe(duration)
 
 	// increment successful synchronizations counter
 	s.synchGauge.With(prometheus.Labels{"status": "completed", "error": ""}).Inc()
