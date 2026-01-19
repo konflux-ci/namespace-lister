@@ -82,6 +82,7 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	}
 	defer s.synchronizing.Store(false)
 
+	st := time.Now()
 	// add timeout for the synch operation
 	sctx, cancel := context.WithTimeout(ctx, s.synchTimeout)
 	defer cancel()
@@ -90,7 +91,8 @@ func (s *SynchronizedAccessCache) Synch(ctx context.Context) error {
 	cacheData, err := s.synch(sctx)
 
 	// collect metrics wrt to synch operation result
-	s.metrics.CollectSynchMetrics(cacheData, err)
+	d := time.Since(st).Milliseconds()
+	s.metrics.CollectSynchMetrics(float64(d), cacheData, err)
 
 	return err
 }
