@@ -102,7 +102,7 @@ require (
 	k8s.io/component-helpers v0.34.2 // indirect
 	k8s.io/controller-manager v0.34.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.2 // indirect
+	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.1 // indirect
