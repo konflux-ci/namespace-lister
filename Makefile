@@ -14,7 +14,7 @@ PERF_CLUSTER_KUBECONFIG ?= $(PERF_OUT_DIR)/namespace-lister-perf-test
 PERF_CLUSTER_PROVIDER_FLAGS ?= --disable-qps-limits
 
 # renovate: datasource=github-releases depName=golangci-lint packageName=golangci/golangci-lint
-GOLANGCI_LINT_VERSION ?= v2.8.0
+GOLANGCI_LINT_VERSION ?= v2.10.1
 
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
