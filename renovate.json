@@ -27,6 +27,26 @@
       ],
       "prPriority": 10
     },
+    {
+      "groupName": "go-modules minor",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+    },
+    {
+      "groupName": "go-modules major",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ]
+    }
   ],
   "customManagers": [
     {
