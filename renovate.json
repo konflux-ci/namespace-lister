@@ -20,6 +20,14 @@
   "dockerfile": {
     "enabled": true
   },
+  "packageRules": [
+    {
+      "matchManagers": [
+        "tekton"
+      ],
+      "prPriority": 10
+    },
+  ],
   "customManagers": [
     {
       "customType": "regex",
