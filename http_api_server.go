@@ -70,7 +70,7 @@ func (s *APIServer) WithTLSOpts(tlsOpts ...func(*tls.Config)) *APIServer {
 // for the provided context to be invalidated.
 func (s *APIServer) Start(ctx context.Context) error {
 	// HTTP Server graceful shutdown
-	go func() {
+	go func() { //nolint:gosec // G118: intentional, parent context is cancelled so a fresh context is needed for shutdown
 		<-ctx.Done()
 
 		sctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
