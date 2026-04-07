@@ -49,6 +49,9 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v6
+
       - name: Determine Go version
         id: go_version
         run: |
@@ -67,9 +70,6 @@ jobs:
         uses: kubernetes-sigs/kwok@main
         with:
           command: kwokctl
-
-      - name: Checkout Git Repository
-        uses: actions/checkout@v6
 
       - name: Run performance tests
         run: |
