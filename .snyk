@@ -1,0 +1,7 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore:
+  CVE-2024-7598:
+    - '*':
+        reason: 'No fix available upstream - k8s.io/kubernetes race condition in namespace deletion (GO-2025-3547). Low severity (CVSS 3.1), used only as a library for RBAC types.'
+        expires: '2026-10-07T00:00:00.000Z'
