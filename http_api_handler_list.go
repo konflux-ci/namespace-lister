@@ -33,13 +33,11 @@ func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		serr := &kerrors.StatusError{}
 		if errors.As(err, &serr) {
-			w.WriteHeader(int(serr.Status().Code))
-			h.write(l, w, []byte(serr.Error()))
+			http.Error(w, serr.Error(), int(serr.Status().Code))
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
-		h.write(l, w, []byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -47,8 +45,7 @@ func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	// for PoC limited to JSON
 	b, err := json.Marshal(nn)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		h.write(l, w, []byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

@@ -1,6 +1,8 @@
 package cache_test
 
 import (
+	"slices"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -96,7 +98,7 @@ var _ = Describe("AuthCache", func() {
 		nn := c.List(sub1, sub2)
 
 		// then
-		expectedNn := append(nn1, nn2...)
+		expectedNn := slices.Concat(nn1, nn2)
 		Expect(nn).To(ConsistOf(expectedNn))
 	})
 
@@ -116,7 +118,7 @@ var _ = Describe("AuthCache", func() {
 		nn := c.List(sub1, sub2)
 
 		// then
-		expectedNn := append(nn1, nn2...)
+		expectedNn := slices.Concat(nn1, nn2)
 		Expect(nn).To(ConsistOf(expectedNn))
 	})
 })

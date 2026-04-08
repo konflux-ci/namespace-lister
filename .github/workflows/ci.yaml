@@ -13,6 +13,8 @@ jobs:
   unit-tests:
     name: Run unit tests
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
 
     steps:
       - name: Checkout Git Repository
@@ -28,17 +30,28 @@ jobs:
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           GINKGO: go run github.com/onsi/ginkgo/v2/ginkgo
-          GINKGO_ARGS: --race --github-output
+          GINKGO_ARGS: --race --github-output --cover --coverprofile=coverage.out --output-dir=.
         run: make test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          use_oidc: true
+          flags: unit-tests
+          files: coverage.out
+          fail_ci_if_error: false
 
   performance-tests:
     name: Run performance tests
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v6
+
       - name: Determine Go version
         id: go_version
         run: |
@@ -57,9 +70,6 @@ jobs:
         uses: kubernetes-sigs/kwok@main
         with:
           command: kwokctl
-
-      - name: Checkout Git Repository
-        uses: actions/checkout@v6
 
       - name: Run performance tests
         run: |

@@ -91,7 +91,7 @@ var _ = Describe("HttpHandlerList", func() {
 		Expect(w.Result()).NotTo(BeNil())
 		Expect(w.Result().StatusCode).To(Equal(expectedResponseStatus))
 		// Expect(w.Result().Header.Get(HttpContentType)).To(Equal(HttpContentTypeApplication))
-		Expect(io.ReadAll(w.Result().Body)).To(BeEquivalentTo(expectedErr.Error()))
+		Expect(io.ReadAll(w.Result().Body)).To(BeEquivalentTo(expectedErr.Error() + "\n"))
 	},
 		Entry("unhandled error", errors.New("unhandled error"), http.StatusInternalServerError),
 		Entry("handled error", kerrors.NewTimeoutError("timed-out", 200), http.StatusGatewayTimeout),
