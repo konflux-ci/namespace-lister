@@ -14,7 +14,7 @@ metadata:
     appstudio.openshift.io/component: namespace-lister
     pipelines.appstudio.openshift.io/type: build
   name: namespace-lister-on-pull-request
-  namespace: konflux-tenant-ops-tenant
+  namespace: konflux-infra-tenant
 spec:
   params:
   - name: git-url
@@ -22,7 +22,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/konflux-tenant-ops-tenant/namespace-lister:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/konflux-infra-tenant/namespace-lister:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: path-context
