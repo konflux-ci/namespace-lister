@@ -1,0 +1,19 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore:
+  GO-2026-4947:
+    - '*':
+        reason: 'Fixed in Go 1.26.2 — no go-toolset image available yet for Go 1.26.x'
+        expires: '2026-10-08T00:00:00.000Z'
+  GO-2026-4946:
+    - '*':
+        reason: 'Fixed in Go 1.26.2 — no go-toolset image available yet for Go 1.26.x'
+        expires: '2026-10-08T00:00:00.000Z'
+  GO-2026-4870:
+    - '*':
+        reason: 'Fixed in Go 1.26.2 — no go-toolset image available yet for Go 1.26.x'
+        expires: '2026-10-08T00:00:00.000Z'
+  GO-2026-4866:
+    - '*':
+        reason: 'Fixed in Go 1.26.2 — no go-toolset image available yet for Go 1.26.x'
+        expires: '2026-10-08T00:00:00.000Z'
