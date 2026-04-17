@@ -33,6 +33,10 @@ image-build:
 kind-create:
 	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml
 
+.PHONY: kind-delete
+kind-delete:
+	$(KIND) delete cluster --name "$(KIND_CLUSTER_NAME)"
+
 .PHONY: kind-load-image
 kind-load-image:
 	$(IMAGE_BUILDER) save $(IMG) | \
