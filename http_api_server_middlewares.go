@@ -58,7 +58,7 @@ func addAuthnMiddleware(ar authenticator.Request, next http.Handler) http.Handle
 		case err != nil: // error contacting the APIServer for authenticating the request
 			w.WriteHeader(http.StatusUnauthorized)
 			l := getLoggerFromContext(r.Context())
-			l.Error("error authenticating request", "error", err, "request-headers", r.Header)
+			l.Error("error authenticating request", "error", err)
 			return
 
 		case !ok: // request could not be authenticated
