@@ -1,4 +1,4 @@
-package main
+package constant
 
 const (
 	EnvLogLevel          string = "LOG_LEVEL"

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type httpMetrics struct {
@@ -108,4 +111,22 @@ func newHTTPMetrics(reg prometheus.Registerer) httpMetrics {
 		responseSize:   responseSize,
 		inFlightGauge:  inFlightGauge,
 	}
+}
+
+// addMetricsMiddleware adds a set of middlewares that collect metrics for each requests
+func addMetricsMiddleware(reg prometheus.Registerer, handler http.Handler) http.Handler {
+	if reg == nil {
+		return handler
+	}
+
+	m := newHTTPMetrics(reg)
+	return promhttp.InstrumentHandlerDuration(
+		m.requestTiming,
+		promhttp.InstrumentHandlerCounter(
+			m.requestCounter,
+			promhttp.InstrumentHandlerResponseSize(
+				m.responseSize,
+				promhttp.InstrumentHandlerInFlight(
+					m.inFlightGauge,
+					handler))))
 }
