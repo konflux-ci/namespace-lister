@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/konflux-ci/namespace-lister/internal/constant"
+	"github.com/konflux-ci/namespace-lister/internal/log"
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -28,7 +30,7 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 	synchCache := cache.NewSynchronizedAccessCache(
 		sae,
 		resourceCache, cache.CacheSynchronizerOptions{
-			Logger:       getLoggerFromContext(ctx),
+			Logger:       log.GetLoggerFromContext(ctx),
 			ResyncPeriod: getResyncPeriodFromEnvOrZero(ctx),
 			Metrics:      acm,
 		},
@@ -78,13 +80,13 @@ func buildAndRegisterAccessCacheMetrics(registry prometheus.Registerer) (cache.A
 // If the environment variable is not set it returns the zero value.
 func getResyncPeriodFromEnvOrZero(ctx context.Context) time.Duration {
 	var zero time.Duration
-	rps, ok := os.LookupEnv(EnvCacheResyncPeriod)
+	rps, ok := os.LookupEnv(constant.EnvCacheResyncPeriod)
 	if !ok {
 		return zero
 	}
 	rp, err := time.ParseDuration(rps)
 	if err != nil {
-		getLoggerFromContext(ctx).Warn("can not parse duration from environment variable", "error", err)
+		log.GetLoggerFromContext(ctx).Warn("can not parse duration from environment variable", "error", err)
 		return zero
 	}
 	return rp

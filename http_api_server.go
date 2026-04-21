@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/konflux-ci/namespace-lister/internal/http/middleware"
+	"github.com/konflux-ci/namespace-lister/internal/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
@@ -35,10 +37,10 @@ func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceList
 	h := http.NewServeMux()
 	h.Handle(patternGetNamespaces,
 		addMetricsMiddleware(reg,
-			addInjectLoggerMiddleware(*l,
-				addLogCorrelationIDMiddleware(
-					addAuthnMiddleware(ar,
-						addLogRequestMiddleware(
+			middleware.AddInjectLoggerMiddleware(*l,
+				middleware.AddLogCorrelationIDMiddleware(
+					middleware.AddAuthnMiddleware(ar,
+						middleware.AddLogRequestMiddleware(
 							NewListNamespacesHandler(lister)))))))
 
 	h.HandleFunc(patternHealthz, healthz)
@@ -78,7 +80,7 @@ func (s *APIServer) Start(ctx context.Context) error {
 
 		//nolint:contextcheck
 		if err := s.Shutdown(sctx); err != nil {
-			getLoggerFromContext(ctx).Error("error gracefully shutting down the HTTP server", "error", err)
+			log.GetLoggerFromContext(ctx).Error("error gracefully shutting down the HTTP server", "error", err)
 			os.Exit(1)
 		}
 	}()
