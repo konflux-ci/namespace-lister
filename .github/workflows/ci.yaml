@@ -75,15 +75,34 @@ jobs:
         run: |
           GINKGO="go run github.com/onsi/ginkgo/v2/ginkgo --github-output" make test-perf
 
+  get-kind-node-image-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.versions }}
+    steps:
+      - name: Fetch and Filter Versions
+        id: set-matrix
+        run: |
+          VERSIONS=$(skopeo list-tags docker://kindest/node | jq -c '
+            .Tags
+            | [ .[] | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) ]
+            | sort_by(split(".")[0:3] | map(ltrimstr("v") | tonumber))
+            | group_by(split(".")[1])
+            | map(last)
+            | .[-3:]
+          ')
+          echo "Identified versions: ${VERSIONS}"
+          echo "versions=${VERSIONS}" >> $GITHUB_OUTPUT
+
   acceptance:
     name: Run acceptance tests
     runs-on: ubuntu-24.04
+    needs: get-kind-node-image-versions
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - proxy: dumb-proxy
-          - proxy: smart-proxy
+        proxy: [ "dumb-proxy", "smart-proxy" ]
+        kubernetes: ${{ fromJson(needs.get-kind-node-image-versions.outputs.matrix) }}
 
     steps:
       - name: Checkout Git Repository
@@ -103,6 +122,7 @@ jobs:
         env:
           IMAGE_BUILDER: docker
           IMG: namespace-lister:pr-${{ github.event.pull_request.number }}
+          KIND_NODE_IMG: ${{ matrix.kubernetes }}
         run: |
           echo "##[group] Preparing environment"
             make -C "acceptance/test/${{ matrix.proxy }}" prepare
