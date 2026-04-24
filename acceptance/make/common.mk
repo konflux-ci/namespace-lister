@@ -39,9 +39,11 @@ kind-recreate:
 	$(MAKE) kind-create
 
 .PHONY: kind-load-image
-kind-load-image:
-	$(IMAGE_BUILDER) save $(IMG) | \
-		$(KIND) load image-archive --name $(KIND_CLUSTER_NAME) /dev/stdin
+kind-load-image: $(OUT_DIR)
+	$(IMAGE_BUILDER) tag $(IMG) docker.io/library/$(IMG) 2>/dev/null || true
+	$(IMAGE_BUILDER) save docker.io/library/$(IMG) -o $(OUT_DIR)/image.tar
+	$(KIND) load image-archive $(OUT_DIR)/image.tar --name $(KIND_CLUSTER_NAME)
+	rm -f $(OUT_DIR)/image.tar
 
 .PHONY: update-namespace-lister
 update-namespace-lister: image-build load-image
