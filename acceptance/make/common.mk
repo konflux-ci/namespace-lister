@@ -57,6 +57,22 @@ deploy-test-infra:
 		--timeout=300s \
 		-l 'app.kubernetes.io/instance=cert-manager' \
 		-n cert-manager deployment
+	@echo "Waiting for cert-manager webhook to accept connections..."
+	@webhook_ready=false; \
+	for i in $$(seq 1 30); do \
+		if $(KUBECTL) get validatingwebhookconfigurations cert-manager-webhook >/dev/null 2>&1 && \
+		   echo '{"apiVersion":"cert-manager.io/v1","kind":"Issuer","metadata":{"name":"probe","namespace":"default"},"spec":{"selfSigned":{}}}' | \
+		   $(KUBECTL) apply --dry-run=server -f - >/dev/null 2>&1; then \
+			webhook_ready=true; \
+			break; \
+		fi; \
+		echo "  webhook not ready yet, retrying ($$i/30)..."; \
+		sleep 2; \
+	done; \
+	if [ "$$webhook_ready" != "true" ]; then \
+		echo "ERROR: cert-manager webhook did not become ready after 30 attempts"; \
+		exit 1; \
+	fi
 	$(KUBECTL) apply -k $(ROOT_DIR)/dependencies/cluster-issuer/
 
 .PHONY: create-test-identity
