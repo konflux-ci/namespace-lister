@@ -1,5 +1,6 @@
 KIND_CLUSTER_NAME ?= namespace-lister-acceptance-tests
-IMG ?= namespace-lister:latest
+# Default targets podman; docker users can override with IMG=namespace-lister:latest
+IMG ?= localhost/namespace-lister:latest
 IMAGE_BUILDER ?= docker
 
 ROOT_DIR ?= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -38,9 +39,10 @@ kind-delete:
 	$(KIND) delete cluster --name "$(KIND_CLUSTER_NAME)"
 
 .PHONY: kind-load-image
-kind-load-image:
-	$(IMAGE_BUILDER) save $(IMG) | \
-		$(KIND) load image-archive --name $(KIND_CLUSTER_NAME) /dev/stdin
+kind-load-image: $(OUT_DIR)
+	$(IMAGE_BUILDER) save $(IMG) -o $(OUT_DIR)/image.tar
+	$(KIND) load image-archive $(OUT_DIR)/image.tar --name $(KIND_CLUSTER_NAME)
+	rm -f $(OUT_DIR)/image.tar
 
 .PHONY: update-namespace-lister
 update-namespace-lister: image-build load-image
