@@ -78,10 +78,12 @@ var _ = Describe("HttpAuthMiddleware", func() {
 
 		By("check the error log includes the failure, headers, and message")
 		logged := buf.String()
-		Expect(logged).To(ContainSubstring(`"msg":"error authenticating request"`))
-		Expect(logged).To(ContainSubstring(`"error contacting the APIServer"`))
-		Expect(logged).To(ContainSubstring(`"X-Test-Auth"`))
-		Expect(logged).To(ContainSubstring(`"probe"`))
+		Expect(logged).To(And(
+			ContainSubstring(`"msg":"error authenticating request"`),
+			ContainSubstring(`"error contacting the APIServer"`),
+			Not(ContainSubstring(`"X-Test-Auth"`)),
+			Not(ContainSubstring(`"probe"`)),
+		))
 	})
 
 	It("runs the next handler if authentication pass", func(ctx context.Context) {
