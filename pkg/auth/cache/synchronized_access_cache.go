@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"slices"
@@ -148,7 +147,6 @@ func (s *SynchronizedAccessCache) synch(ctx context.Context) (AccessData, error)
 	// restock the cache
 	s.Restock(&c)
 
-	s.logDumpCacheData(ctx, slog.LevelDebug, c)
 	return c, nil
 }
 
@@ -205,31 +203,6 @@ func (s *SynchronizedAccessCache) withVirtualLabelsAndAnnotationsForAccess(ns co
 
 	// return copy
 	return *lns
-}
-
-func (s *SynchronizedAccessCache) logDumpCacheData(ctx context.Context, level slog.Level, c AccessData) {
-	if !s.logger.Enabled(ctx, level) {
-		return
-	}
-
-	// calculate subject-namespace pairs dump
-	snp, snt := 0, make(map[string]int, len(c))
-	for k, v := range c {
-		snp += len(v)
-		snt[k.String()] = len(v)
-	}
-
-	// log the line
-	args := []slog.Attr{
-		slog.Int("subjects", len(c)),
-		slog.Int("subject-namespace pairs", snp),
-	}
-	if jsnt, err := json.Marshal(snt); err == nil {
-		args = append(args, slog.String("dump-json", string(jsnt)))
-	} else {
-		args = append(args, slog.Any("dump", snt))
-	}
-	s.logger.LogAttrs(ctx, level, "cache restocked", args...)
 }
 
 func (s *SynchronizedAccessCache) removeDuplicateSubjects(ss []rbacv1.Subject) []rbacv1.Subject {
