@@ -1,0 +1,22 @@
+name: Auto-merge approved dependency PRs
+
+on:
+  check_suite:
+    types: [completed]
+
+jobs:
+  auto-merge:
+    name: Merge if all checks pass
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: konflux-ci/deptriage@main
+        with:
+          command: merge
+          pr-number: "0"
+          head-sha: ${{ github.event.check_suite.head_sha }}
