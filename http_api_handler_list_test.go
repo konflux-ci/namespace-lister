@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	namespacelister "github.com/konflux-ci/namespace-lister"
-	"github.com/konflux-ci/namespace-lister/internal/constant"
-	nscontext "github.com/konflux-ci/namespace-lister/internal/context"
+	"github.com/konflux-ci/namespace-lister/internal/envconfig"
+	"github.com/konflux-ci/namespace-lister/internal/contextkey"
 
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +33,7 @@ var _ = Describe("HttpHandlerList", func() {
 
 	BeforeEach(func(tctx context.Context) {
 		var err error
-		ctx := context.WithValue(tctx, nscontext.ContextKeyUserDetails,
+		ctx := context.WithValue(tctx, contextkey.ContextKeyUserDetails,
 			&authenticator.Response{
 				User: &user.DefaultInfo{
 					Name: "myuser",
@@ -62,7 +62,7 @@ var _ = Describe("HttpHandlerList", func() {
 		// then
 		Expect(w.Result()).NotTo(BeNil())
 		Expect(w.Result().StatusCode).To(Equal(http.StatusOK))
-		Expect(w.Result().Header.Get(constant.HttpContentType)).To(Equal(constant.HttpContentTypeApplication))
+		Expect(w.Result().Header.Get(envconfig.HttpContentType)).To(Equal(envconfig.HttpContentTypeApplication))
 		Expect(io.ReadAll(w.Result().Body)).To(Equal(eb))
 	},
 		Entry("empty list", corev1.NamespaceList{}),

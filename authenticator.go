@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/konflux-ci/namespace-lister/internal/constant"
+	"github.com/konflux-ci/namespace-lister/internal/envconfig"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/apis/apiserver"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -111,11 +111,11 @@ func newTokenReviewAuthenticatorWithOpts(opts *AuthenticatorOptions) (authentica
 // GetUsernameHeaderFromEnv retrieves from environment variable the name of the header
 // to use when authenticating requests by username header to extract user's username
 func GetUsernameHeaderFromEnv() string {
-	return os.Getenv(constant.EnvUsernameHeader)
+	return os.Getenv(envconfig.EnvUsernameHeader)
 }
 
 // GetGroupsHeaderFromEnv retrieves from environment variable the name of the header
 // to use when authenticating requests by username header to extract user's groups
 func GetGroupsHeaderFromEnv() string {
-	return os.Getenv(constant.EnvGroupsHeader)
+	return os.Getenv(envconfig.EnvGroupsHeader)
 }

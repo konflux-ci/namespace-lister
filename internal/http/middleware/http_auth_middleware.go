@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 
-	nscontext "github.com/konflux-ci/namespace-lister/internal/context"
+	"github.com/konflux-ci/namespace-lister/internal/contextkey"
 	"github.com/konflux-ci/namespace-lister/internal/log"
 )
 
@@ -29,7 +29,7 @@ func AddAuthnMiddleware(ar authenticator.Request, next http.Handler) http.Handle
 		default: // request is authenticated
 			// Inject authentication details into request context
 			ctx := r.Context()
-			authCtx := context.WithValue(ctx, nscontext.ContextKeyUserDetails, rs)
+			authCtx := context.WithValue(ctx, contextkey.ContextKeyUserDetails, rs)
 			log.GetLoggerFromContext(r.Context()).With("user", rs).Debug("request authenticated")
 
 			// serve next request

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/konflux-ci/namespace-lister/internal/constant"
-	nscontext "github.com/konflux-ci/namespace-lister/internal/context"
+	"github.com/konflux-ci/namespace-lister/internal/envconfig"
+	"github.com/konflux-ci/namespace-lister/internal/contextkey"
 	"github.com/konflux-ci/namespace-lister/internal/log"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
@@ -29,7 +29,7 @@ func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 	l := log.GetLoggerFromContext(ctx)
 
-	ud := r.Context().Value(nscontext.ContextKeyUserDetails).(*authenticator.Response)
+	ud := r.Context().Value(contextkey.ContextKeyUserDetails).(*authenticator.Response)
 
 	// retrieve projects as the user
 	nn, err := h.lister.ListNamespaces(r.Context(), ud.User.GetName(), ud.User.GetGroups())
@@ -52,7 +52,7 @@ func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Add(constant.HttpContentType, constant.HttpContentTypeApplication)
+	w.Header().Add(envconfig.HttpContentType, envconfig.HttpContentTypeApplication)
 	h.write(l, w, b)
 }
 

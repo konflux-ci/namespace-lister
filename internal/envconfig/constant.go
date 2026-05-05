@@ -1,4 +1,4 @@
-package constant
+package envconfig
 
 const (
 	EnvLogLevel          string = "LOG_LEVEL"
@@ -7,8 +7,7 @@ const (
 	EnvAddress           string = "ADDRESS"
 	EnvCacheResyncPeriod string = "CACHE_RESYNC_PERIOD"
 
-	DefaultAddr           string = ":8080"
-	DefaultHeaderUsername string = "X-Email"
+	DefaultAddr string = ":8080"
 
 	HttpContentType            string = "Content-Type"
 	HttpContentTypeApplication string = "application/json;charset=utf-8"

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	nscontext "github.com/konflux-ci/namespace-lister/internal/context"
+	"github.com/konflux-ci/namespace-lister/internal/contextkey"
 	"github.com/konflux-ci/namespace-lister/pkg/metricsutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -113,7 +113,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 
 		// we sample a function repeatedly to get a statistically significant set of measurements
 		experiment.Sample(func(idx int) {
-			rctx := context.WithValue(context.Background(), nscontext.ContextKeyUserDetails, &authenticator.Response{
+			rctx := context.WithValue(context.Background(), contextkey.ContextKeyUserDetails, &authenticator.Response{
 				User: &user.DefaultInfo{
 					Name: username,
 				},

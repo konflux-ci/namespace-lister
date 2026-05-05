@@ -1,4 +1,4 @@
-package context
+package contextkey
 
 type ContextKey string
 

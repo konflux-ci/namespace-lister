@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/konflux-ci/namespace-lister/internal/constant"
+	"github.com/konflux-ci/namespace-lister/internal/envconfig"
 	"github.com/konflux-ci/namespace-lister/internal/log"
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,7 +80,7 @@ func buildAndRegisterAccessCacheMetrics(registry prometheus.Registerer) (cache.A
 // If the environment variable is not set it returns the zero value.
 func getResyncPeriodFromEnvOrZero(ctx context.Context) time.Duration {
 	var zero time.Duration
-	rps, ok := os.LookupEnv(constant.EnvCacheResyncPeriod)
+	rps, ok := os.LookupEnv(envconfig.EnvCacheResyncPeriod)
 	if !ok {
 		return zero
 	}
