@@ -33,10 +33,17 @@ image-build:
 kind-create:
 	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml
 
+.PHONY: kind-recreate
+kind-recreate:
+	-$(KIND) delete cluster --name "$(KIND_CLUSTER_NAME)"
+	$(MAKE) kind-create
+
 .PHONY: kind-load-image
-kind-load-image:
-	$(IMAGE_BUILDER) save $(IMG) | \
-		$(KIND) load image-archive --name $(KIND_CLUSTER_NAME) /dev/stdin
+kind-load-image: $(OUT_DIR)
+	$(IMAGE_BUILDER) tag $(IMG) docker.io/library/$(IMG) 2>/dev/null || true
+	$(IMAGE_BUILDER) save docker.io/library/$(IMG) -o $(OUT_DIR)/image.tar
+	$(KIND) load image-archive $(OUT_DIR)/image.tar --name $(KIND_CLUSTER_NAME)
+	rm -f $(OUT_DIR)/image.tar
 
 .PHONY: update-namespace-lister
 update-namespace-lister: image-build load-image
@@ -50,6 +57,22 @@ deploy-test-infra:
 		--timeout=300s \
 		-l 'app.kubernetes.io/instance=cert-manager' \
 		-n cert-manager deployment
+	@echo "Waiting for cert-manager webhook to accept connections..."
+	@webhook_ready=false; \
+	for i in $$(seq 1 30); do \
+		if $(KUBECTL) get validatingwebhookconfigurations cert-manager-webhook >/dev/null 2>&1 && \
+		   echo '{"apiVersion":"cert-manager.io/v1","kind":"Issuer","metadata":{"name":"probe","namespace":"default"},"spec":{"selfSigned":{}}}' | \
+		   $(KUBECTL) apply --dry-run=server -f - >/dev/null 2>&1; then \
+			webhook_ready=true; \
+			break; \
+		fi; \
+		echo "  webhook not ready yet, retrying ($$i/30)..."; \
+		sleep 2; \
+	done; \
+	if [ "$$webhook_ready" != "true" ]; then \
+		echo "ERROR: cert-manager webhook did not become ready after 30 attempts"; \
+		exit 1; \
+	fi
 	$(KUBECTL) apply -k $(ROOT_DIR)/dependencies/cluster-issuer/
 
 .PHONY: create-test-identity

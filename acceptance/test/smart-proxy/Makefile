@@ -11,7 +11,7 @@ include ../../make/*.mk
 export KUBECONFIG=$(KUBECONFIG_ADMIN)
 
 .PHONY: prepare
-prepare: image-build kind-create kind-load-image deploy-test-infra deploy-namespace-lister deploy-test-proxy
+prepare: image-build kind-recreate kind-load-image deploy-test-infra deploy-namespace-lister deploy-test-proxy
 	@:
 
 .PHONY: deploy-test-proxy
