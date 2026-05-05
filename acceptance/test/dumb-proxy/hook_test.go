@@ -2,6 +2,7 @@ package acceptance
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/cucumber/godog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,14 +18,22 @@ func InjectHooks(ctx *godog.ScenarioContext) {
 	suite.InjectBaseHooks(ctx)
 
 	ctx.Before(injectBuildUserClient)
+	ctx.Before(injectServiceAddresses)
 }
 
 func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
 	return tcontext.WithBuildUserClientFunc(ctx, buildUserClientWithTokenReview), nil
 }
 
+func injectServiceAddresses(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
+	address := suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
+	ctx = tcontext.WithNamespaceListerAddress(ctx, address)
+	ctx = tcontext.WithMetricsAddress(ctx, address)
+	ctx = tcontext.WithTLSConfig(ctx, &tls.Config{InsecureSkipVerify: true}) //nolint:gosec
+	return ctx, nil
+}
+
 func buildUserClientWithTokenReview(ctx context.Context) (client.Client, error) {
-	// build client with bearer token
 	cfg, err := arest.NewDefaultClientConfig()
 	if err != nil {
 		return nil, err

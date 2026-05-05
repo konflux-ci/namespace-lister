@@ -107,9 +107,17 @@ jobs:
           echo "##[group] Preparing environment"
             make -C "acceptance/test/${{ matrix.proxy }}" prepare
           echo "##[endgroup]"
-          echo "##[group] Running tests"
+          echo "##[group] Running tests (${{ matrix.proxy }})"
             make -C "acceptance/test/${{ matrix.proxy }}" test
           echo "##[endgroup]"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-test-results-${{ matrix.proxy }}
+          path: acceptance/test/${{ matrix.proxy }}/out/
+          retention-days: 7
 
   go-tidy:
     name: Tidy go mod

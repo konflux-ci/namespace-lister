@@ -68,6 +68,13 @@ test-perf: ## Run performance tests
 		--keep-going --procs=1 --flake-attempts 2 --output-dir=$(PERF_OUT_DIR)
 	# -$(PERF_CLUSTER_PROVIDER) delete cluster --name namespace-lister-perf-test
 
+.PHONY: test-e2e
+test-e2e: ## Run all acceptance test suites end-to-end.
+	$(MAKE) -C acceptance/test/dumb-proxy prepare
+	$(MAKE) -C acceptance/test/dumb-proxy test
+	$(MAKE) -C acceptance/test/smart-proxy prepare
+	$(MAKE) -C acceptance/test/smart-proxy test
+
 .PHONY: image-build
 image-build:
 	$(IMAGE_BUILDER) build -t "$(IMG)" .
