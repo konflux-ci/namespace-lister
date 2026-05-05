@@ -57,7 +57,7 @@ fmt: ## Run go fmt against code.
 
 .PHONY: test
 test: ## Run go test against code.
-	$(GINKGO) $(GINKGO_ARGS) --label-filter='!perf' ./pkg/... ./
+	$(GINKGO) $(GINKGO_ARGS) --label-filter='!perf' ./pkg/... ./internal/... ./
 
 .PHONY: test-perf
 test-perf: ## Run performance tests

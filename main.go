@@ -17,10 +17,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
+	nslog "github.com/konflux-ci/namespace-lister/internal/log"
 )
 
 func main() {
-	l := buildLogger()
+	l := nslog.BuildLogger()
 	if err := run(l); err != nil {
 		l.Error("error running the server", "error", err)
 		os.Exit(1)
@@ -78,7 +80,7 @@ func run(l *slog.Logger) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	ctx = setLoggerIntoContext(ctx, l)
+	ctx = nslog.SetLoggerIntoContext(ctx, l)
 
 	// create resource cache
 	l.Info("creating resource cache")
