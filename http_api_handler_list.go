@@ -6,6 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/konflux-ci/namespace-lister/internal/envconfig"
+	"github.com/konflux-ci/namespace-lister/internal/contextkey"
+	"github.com/konflux-ci/namespace-lister/internal/log"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 )
@@ -24,9 +27,9 @@ func NewListNamespacesHandler(lister NamespaceLister) http.Handler {
 
 func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	l := getLoggerFromContext(ctx)
+	l := log.GetLoggerFromContext(ctx)
 
-	ud := r.Context().Value(ContextKeyUserDetails).(*authenticator.Response)
+	ud := r.Context().Value(contextkey.ContextKeyUserDetails).(*authenticator.Response)
 
 	// retrieve projects as the user
 	nn, err := h.lister.ListNamespaces(r.Context(), ud.User.GetName(), ud.User.GetGroups())
@@ -49,7 +52,7 @@ func (h *ListNamespacesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Add(HttpContentType, HttpContentTypeApplication)
+	w.Header().Add(envconfig.HttpContentType, envconfig.HttpContentTypeApplication)
 	h.write(l, w, b)
 }
 
