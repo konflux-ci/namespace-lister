@@ -36,10 +36,11 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 	ctx.Then(`^the User can retrieve only the namespaces they have access to$`, TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo)
 	ctx.Then(`^the ServiceAccount retrieves namespaces$`, TheUserRetrievesNamespaces)
 	ctx.Then(`^the ServiceAccount retrieves no namespaces$`, TheUserRetrievesNoNamespaces)
-	ctx.Then(`^the User request is rejected with unauthorized error$`, userRequestIsRejectedWithUnauthorizerError)
+	ctx.Then(`^the User request is rejected with unauthorized error$`, theUserRequestReturnsUnauthorized)
+	ctx.Then(`^the user request returns unauthorized$`, theUserRequestReturnsUnauthorized)
 }
 
-func userRequestIsRejectedWithUnauthorizerError(ctx context.Context) (context.Context, error) {
+func theUserRequestReturnsUnauthorized(ctx context.Context) (context.Context, error) {
 	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
 	if err != nil {
 		return ctx, err
