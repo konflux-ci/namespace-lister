@@ -17,6 +17,7 @@ func InjectHooks(ctx *godog.ScenarioContext) {
 	suite.InjectBaseHooks(ctx)
 
 	ctx.Before(injectBuildUserClient)
+	ctx.Before(suite.InjectServiceAddresses(defaultTestAddress))
 }
 
 func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
@@ -24,7 +25,6 @@ func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Con
 }
 
 func buildUserClientWithTokenReview(ctx context.Context) (client.Client, error) {
-	// build client with bearer token
 	cfg, err := arest.NewDefaultClientConfig()
 	if err != nil {
 		return nil, err
