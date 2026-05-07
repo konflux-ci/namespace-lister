@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"os"
-	"time"
 
-	"github.com/konflux-ci/namespace-lister/internal/constants"
 	"github.com/konflux-ci/namespace-lister/internal/log"
+	"github.com/konflux-ci/namespace-lister/internal/resourcecache"
 	"github.com/konflux-ci/namespace-lister/pkg/auth/cache"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -20,7 +18,7 @@ import (
 // buildAndStartSynchronizedAccessCache builds a SynchronizedAccessCache.
 // It registers handlers on events on resources that will trigger an AccessCache synchronization.
 func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crcache.Cache, registry prometheus.Registerer) (*cache.SynchronizedAccessCache, error) {
-	acm, err := buildAndRegisterAccessCacheMetrics(registry)
+	acm, err := resourcecache.BuildAndRegisterAccessCacheMetrics(registry)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +29,7 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 		sae,
 		resourceCache, cache.CacheSynchronizerOptions{
 			Logger:       log.GetLoggerFromContext(ctx),
-			ResyncPeriod: getResyncPeriodFromEnvOrZero(ctx),
+			ResyncPeriod: resourcecache.GetValidResyncPeriodFromEnvOrZero(ctx),
 			Metrics:      acm,
 		},
 	)
@@ -62,32 +60,3 @@ func buildAndStartSynchronizedAccessCache(ctx context.Context, resourceCache crc
 	return synchCache, nil
 }
 
-func buildAndRegisterAccessCacheMetrics(registry prometheus.Registerer) (cache.AccessCacheMetrics, error) {
-	// if a registry has not been provided, let's proceed without metrics
-	if registry == nil {
-		return nil, nil
-	}
-
-	// build and register the AccessCacheMetrics
-	accessCacheMetrics := cache.NewAccessCacheMetrics()
-	if err := registry.Register(accessCacheMetrics); err != nil {
-		return nil, err
-	}
-	return accessCacheMetrics, nil
-}
-
-// getResyncPeriodFromEnvOrZero retrieves AccessCache's ResyncPeriod from environment variables.
-// If the environment variable is not set it returns the zero value.
-func getResyncPeriodFromEnvOrZero(ctx context.Context) time.Duration {
-	var zero time.Duration
-	rps, ok := os.LookupEnv(constants.EnvCacheResyncPeriod)
-	if !ok {
-		return zero
-	}
-	rp, err := time.ParseDuration(rps)
-	if err != nil {
-		log.GetLoggerFromContext(ctx).Warn("can not parse duration from environment variable", "error", err)
-		return zero
-	}
-	return rp
-}
