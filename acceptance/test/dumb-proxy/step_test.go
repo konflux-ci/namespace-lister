@@ -10,4 +10,5 @@ func InjectSteps(ctx *godog.ScenarioContext) {
 	suite.InjectSteps(ctx)
 	suite.InjectHealthSteps(ctx)
 	suite.InjectMetricsSteps(ctx)
+	suite.InjectCacheSteps(ctx)
 }

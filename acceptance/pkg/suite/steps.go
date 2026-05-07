@@ -63,17 +63,8 @@ func NTenantNamespacesExist(ctx context.Context, limit int) (context.Context, er
 	}
 
 	for i := range limit {
-		n := corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("run-%s-%d-%d", run, tn, i),
-				Labels: map[string]string{
-					"konflux.ci/type":           "user",
-					"namespace-lister/scope":    "acceptance-tests",
-					"namespace-lister/test-run": run,
-				},
-			},
-		}
-		if err := cli.Create(ctx, &n); err != nil {
+		n := newTestNamespace(fmt.Sprintf("run-%s-%d-%d", run, tn, i), run)
+		if err := cli.Create(ctx, n); err != nil {
 			return ctx, err
 		}
 	}
@@ -183,36 +174,18 @@ func subjectHasAccessToNNamespaces(ctx context.Context, subject rbacv1.Subject, 
 	// create namespaces
 	nn := tcontext.Namespaces(ctx)
 	for i := range number {
-		n := corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
-				Labels: map[string]string{
-					"konflux.ci/type":           "user",
-					"namespace-lister/scope":    "acceptance-tests",
-					"namespace-lister/test-run": run,
-				},
-			},
-		}
-		if err := cli.Create(ctx, &n); err != nil {
+		name := fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i)
+		n := newTestNamespace(name, run)
+		if err := cli.Create(ctx, n); err != nil {
 			return ctx, err
 		}
 
-		if err := cli.Create(ctx, &rbacv1.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
-				Namespace: fmt.Sprintf("run-%s-%s-%d", run, strings.ReplaceAll(subject.Name, ":", "-"), i),
-			},
-			RoleRef: rbacv1.RoleRef{
-				Kind:     "ClusterRole",
-				Name:     "namespace-get",
-				APIGroup: rbacv1.GroupName,
-			},
-			Subjects: []rbacv1.Subject{subject},
-		}); err != nil {
+		rb := newAccessRoleBinding(name, name, subject)
+		if err := cli.Create(ctx, rb); err != nil {
 			return ctx, err
 		}
 
-		nn = append(nn, n)
+		nn = append(nn, *n)
 	}
 
 	return tcontext.WithNamespaces(ctx, nn), nil
