@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/konflux-ci/namespace-lister/internal/contextkey"
+	"github.com/konflux-ci/namespace-lister/internal/resourcecache"
 	"github.com/konflux-ci/namespace-lister/pkg/metricsutil"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,7 +42,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 	var restConfig *rest.Config
 	var c client.Client
 	var ans []client.Object
-	var cacheCfg *cacheConfig
+	var cacheCfg *resourcecache.Config
 
 	BeforeAll(func(ctx context.Context) {
 		var err error
@@ -71,7 +72,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		// create cache
 		ls, err := labels.Parse(fmt.Sprintf("%s=%s", NamespaceTypeLabelKey, NamespaceTypeUserLabelValue))
 		utilruntime.Must(err)
-		cacheCfg = &cacheConfig{restConfig: restConfig, namespacesLabelSector: ls}
+		cacheCfg = &resourcecache.Config{RestConfig: restConfig, NamespacesLabelSelector: ls}
 	})
 
 	It("efficiently authorize on a huge environment with cached accesses", Serial, Label("perf"), func(ctx context.Context) {
@@ -83,7 +84,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		AddReportEntry(experiment.Name, experiment)
 
 		// create cache, namespacelister, and handler
-		cache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+		cache, err := resourcecache.BuildAndStart(ctx, cacheCfg)
 		utilruntime.Must(err)
 		c, err := buildAndStartSynchronizedAccessCache(ctx, cache, nil)
 		utilruntime.Must(err)
@@ -138,7 +139,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		AddReportEntry(experiment.Name, experiment)
 
 		// create resourceCache, namespacelister, and handler
-		resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+		resourceCache, err := resourcecache.BuildAndStart(ctx, cacheCfg)
 		utilruntime.Must(err)
 		registry := prometheus.NewRegistry()
 		c, err := buildAndStartSynchronizedAccessCache(ctx, resourceCache, registry)

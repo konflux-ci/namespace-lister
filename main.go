@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	nslog "github.com/konflux-ci/namespace-lister/internal/log"
+	"github.com/konflux-ci/namespace-lister/internal/resourcecache"
 )
 
 func main() {
@@ -84,11 +85,11 @@ func run(l *slog.Logger) error {
 
 	// create resource cache
 	l.Info("creating resource cache")
-	cacheCfg, err := NewResourceCacheConfigFromEnv(cfg)
+	cacheCfg, err := resourcecache.NewConfigFromEnv(cfg)
 	if err != nil {
 		return err
 	}
-	resourceCache, err := BuildAndStartResourceCache(ctx, cacheCfg)
+	resourceCache, err := resourcecache.BuildAndStart(ctx, cacheCfg)
 	if err != nil {
 		return err
 	}
@@ -106,7 +107,7 @@ func run(l *slog.Logger) error {
 	// build and start http metrics server
 	if enableMetrics {
 		l.Info("building metrics server")
-		httpClient, err := rest.HTTPClientFor(cacheCfg.restConfig)
+		httpClient, err := rest.HTTPClientFor(cacheCfg.RestConfig)
 		if err != nil {
 			l.Error("unable to build http client for metrics server", "error", err)
 			return err
@@ -118,7 +119,7 @@ func run(l *slog.Logger) error {
 			},
 			BindAddress:    metricsAddress,
 			FilterProvider: filters.WithAuthenticationAndAuthorization,
-		}, cacheCfg.restConfig, httpClient)
+		}, cacheCfg.RestConfig, httpClient)
 		if err != nil {
 			l.Error("unable to build metrics server", "error", err)
 			return err

@@ -1,4 +1,4 @@
-package main
+package resourcecache
 
 import (
 	"errors"
@@ -13,22 +13,27 @@ const CacheNamespaceLabelSelectorEnv string = "CACHE_NAMESPACE_LABELSELECTOR"
 
 var ErrResourceCacheConfig error = errors.New("error building resource cache configuration")
 
-func NewResourceCacheConfigFromEnv(cfg *rest.Config) (*cacheConfig, error) {
+type Config struct {
+	RestConfig              *rest.Config
+	NamespacesLabelSelector labels.Selector
+}
+
+func NewConfigFromEnv(cfg *rest.Config) (*Config, error) {
 	// get namespaces labelSelector
-	cacheCfg := &cacheConfig{restConfig: cfg}
-	if err := getNamespacesLabelSelectors(cacheCfg); err != nil {
+	cacheCfg := &Config{RestConfig: cfg}
+	if err := getNamespacesLabelSelectorsFromEnv(cacheCfg); err != nil {
 		return nil, err
 	}
 
 	return cacheCfg, nil
 }
 
-func getNamespacesLabelSelectors(cfg *cacheConfig) error {
+func getNamespacesLabelSelectorsFromEnv(cfg *Config) error {
 	ls, err := labels.Parse(os.Getenv(CacheNamespaceLabelSelectorEnv))
 	if err != nil {
 		return fmt.Errorf("%w for namespaces: %w", ErrResourceCacheConfig, err)
 	}
 
-	cfg.namespacesLabelSector = ls
+	cfg.NamespacesLabelSelector = ls
 	return nil
 }
