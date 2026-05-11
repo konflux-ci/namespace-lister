@@ -36,12 +36,11 @@ var _ = Describe("AddMetricsMiddleware", func() {
 		families, err := reg.Gather()
 		Expect(err).NotTo(HaveOccurred())
 
-		names := metricFamilyNames(families)
-		Expect(names).To(ConsistOf(
-			"namespace_lister_api_latency",
-			"namespace_lister_api_counter",
-			"namespace_lister_api_response_size",
-			"namespace_lister_api_requests_in_flight",
+		Expect(families).To(ConsistOf(
+			WithTransform(getName, Equal("namespace_lister_api_latency")),
+			WithTransform(getName, Equal("namespace_lister_api_counter")),
+			WithTransform(getName, Equal("namespace_lister_api_response_size")),
+			WithTransform(getName, Equal("namespace_lister_api_requests_in_flight")),
 		))
 	})
 
@@ -156,6 +155,26 @@ var _ = Describe("AddMetricsMiddleware", func() {
 			Expect(labels).To(HaveKeyWithValue("code", "200"))
 			Expect(labels).To(HaveKeyWithValue("method", "get"))
 		})
+	})
+
+	It("records the response body size", func() {
+		reg := prometheus.NewRegistry()
+		knownBody := "hello world"
+		sizedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(knownBody))
+		})
+
+		h := middleware.AddMetricsMiddleware(reg, sizedHandler)
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		h.ServeHTTP(rec, req)
+
+		mf := findFamily(reg, "namespace_lister_api_response_size")
+		hist := mf.GetMetric()[0].GetHistogram()
+		Expect(hist.GetSampleCount()).To(BeEquivalentTo(1))
+		Expect(hist.GetSampleSum()).To(BeEquivalentTo(float64(len(knownBody))))
 	})
 
 	Describe("in-flight gauge", func() {

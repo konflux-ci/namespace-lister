@@ -8,14 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func metricFamilyNames(families []*dto.MetricFamily) []string {
-	names := make([]string, len(families))
-	for i, f := range families {
-		names[i] = f.GetName()
-	}
-	return names
-}
-
 var _ = Describe("InitRegistry", func() {
 	It("registers process collector on a fresh registry", func() {
 		reg := prometheus.NewRegistry()
@@ -24,8 +16,9 @@ var _ = Describe("InitRegistry", func() {
 		families, err := reg.Gather()
 		Expect(err).NotTo(HaveOccurred())
 
-		names := metricFamilyNames(families)
-		Expect(names).To(ContainElement(HavePrefix("namespace_lister_process_")))
+		Expect(families).To(ContainElement(
+			WithTransform(func(f *dto.MetricFamily) string { return f.GetName() },
+				HavePrefix("namespace_lister_process_"))))
 	})
 
 	It("panics on duplicate registration", func() {

@@ -17,13 +17,7 @@ func TestMiddleware(t *testing.T) {
 	RunSpecs(t, "Middleware Suite")
 }
 
-func metricFamilyNames(families []*dto.MetricFamily) []string {
-	names := make([]string, len(families))
-	for i, f := range families {
-		names[i] = f.GetName()
-	}
-	return names
-}
+func getName(f *dto.MetricFamily) string { return f.GetName() }
 
 func findFamily(reg *prometheus.Registry, name string) *dto.MetricFamily {
 	families, err := reg.Gather()
