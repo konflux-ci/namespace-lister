@@ -36,7 +36,7 @@ func NewAPIServer(l *slog.Logger, ar authenticator.Request, lister NamespaceList
 	// configure the server
 	h := http.NewServeMux()
 	h.Handle(patternGetNamespaces,
-		addMetricsMiddleware(reg,
+		middleware.AddMetricsMiddleware(reg,
 			middleware.AddInjectLoggerMiddleware(*l,
 				middleware.AddLogCorrelationIDMiddleware(
 					middleware.AddAuthnMiddleware(ar,

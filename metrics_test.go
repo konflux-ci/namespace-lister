@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,8 +16,9 @@ var _ = Describe("InitRegistry", func() {
 		families, err := reg.Gather()
 		Expect(err).NotTo(HaveOccurred())
 
-		names := metricFamilyNames(families)
-		Expect(names).To(ContainElement(HavePrefix("namespace_lister_process_")))
+		Expect(families).To(ContainElement(
+			WithTransform(func(f *dto.MetricFamily) string { return f.GetName() },
+				HavePrefix("namespace_lister_process_"))))
 	})
 
 	It("panics on duplicate registration", func() {

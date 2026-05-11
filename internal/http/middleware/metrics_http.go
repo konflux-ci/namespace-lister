@@ -1,4 +1,4 @@
-package main
+package middleware
 
 import (
 	"net/http"
@@ -113,8 +113,8 @@ func newHTTPMetrics(reg prometheus.Registerer) httpMetrics {
 	}
 }
 
-// addMetricsMiddleware adds a set of middlewares that collect metrics for each requests
-func addMetricsMiddleware(reg prometheus.Registerer, handler http.Handler) http.Handler {
+// AddMetricsMiddleware adds a set of middlewares that collect metrics for each requests
+func AddMetricsMiddleware(reg prometheus.Registerer, handler http.Handler) http.Handler {
 	if reg == nil {
 		return handler
 	}
