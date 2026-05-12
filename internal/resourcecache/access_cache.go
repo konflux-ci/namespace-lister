@@ -24,7 +24,7 @@ func BuildAndRegisterAccessCacheMetrics(registry prometheus.Registerer) (cache.A
 }
 
 // GetValidResyncPeriodFromEnvOrZero retrieves AccessCache's ResyncPeriod from environment variables.
-// If the environment variable is not set or the value is not a valid positive duration, it returns the zero value.
+// If the environment variable is not set or the value is not a valid non-negative duration, it returns the zero value.
 func GetValidResyncPeriodFromEnvOrZero(ctx context.Context) time.Duration {
 	var zero time.Duration
 	rps, ok := os.LookupEnv(constants.EnvCacheResyncPeriod)
