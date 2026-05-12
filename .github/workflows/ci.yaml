@@ -78,6 +78,8 @@ jobs:
   acceptance:
     name: Run acceptance tests
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -101,8 +103,10 @@ jobs:
 
       - name: Run tests
         env:
-          IMAGE_BUILDER: docker
-          IMG: namespace-lister:pr-${{ github.event.pull_request.number }}
+          KIND_EXPERIMENTAL_PROVIDER: podman
+          IMAGE_BUILDER: podman
+          IMG: konflux-ci.dev/namespace-lister:pr-${{ github.event.pull_request.number }}
+          ENABLE_COVERAGE: "true"
         run: |
           echo "##[group] Preparing environment"
             make -C "acceptance/test/${{ matrix.proxy }}" prepare
@@ -110,6 +114,32 @@ jobs:
           echo "##[group] Running tests"
             make -C "acceptance/test/${{ matrix.proxy }}" test
           echo "##[endgroup]"
+
+      - name: Collect e2e coverage
+        if: always()
+        run: |
+          mkdir -p coverage-output && chmod 777 coverage-output
+          cp $HOME/.kube/config /tmp/kubeconfig && chmod 644 /tmp/kubeconfig
+          podman run --rm \
+            --network host \
+            -v /tmp/kubeconfig:/kubeconfig:ro \
+            -v $PWD/coverage-output:/workspace/coverage-output \
+            -e KUBECONFIG=/kubeconfig \
+            quay.io/konflux-ci/konflux-devprod/coverport-cli \
+            collect \
+              --namespace=namespace-lister \
+              --label-selector=apps=namespace-lister \
+              --test-name=e2e-tests \
+              --output=/workspace/coverage-output || true
+
+      - name: Upload e2e coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          flags: e2e-tests
+          directory: coverage-output
+          fail_ci_if_error: false
 
   go-tidy:
     name: Tidy go mod
