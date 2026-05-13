@@ -121,7 +121,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p coverage-output && chmod 777 coverage-output
-          cp "acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg" /tmp/kubeconfig && chmod 400 /tmp/kubeconfig
+          cp "acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg" /tmp/kubeconfig && chmod 600 /tmp/kubeconfig
           podman run --rm \
             --network host \
             -v /tmp/kubeconfig:/kubeconfig:ro \
