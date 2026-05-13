@@ -121,13 +121,13 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p coverage-output && chmod 777 coverage-output
-          cp "acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg" /tmp/kubeconfig && chmod 400 /tmp/kubeconfig
+          cp "acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg" /tmp/kubeconfig && chmod 644 /tmp/kubeconfig
           podman run --rm \
             --network host \
             -v /tmp/kubeconfig:/kubeconfig:ro \
             -v $PWD/coverage-output:/workspace/coverage-output \
             -e KUBECONFIG=/kubeconfig \
-            quay.io/konflux-ci/konflux-devprod/coverport-cli \
+            quay.io/konflux-ci/konflux-devprod/coverport-cli@sha256:44c180e1e3a3521b1057f4e85723efef2eb2107a153c9c5e91dfdb0f5631e41d \
             collect \
               --namespace=namespace-lister \
               --label-selector=apps=namespace-lister \
