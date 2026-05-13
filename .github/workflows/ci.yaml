@@ -116,7 +116,9 @@ jobs:
           echo "##[endgroup]"
 
       - name: Collect e2e coverage
+        id: collect_e2e_coverage
         if: always()
+        continue-on-error: true
         run: |
           mkdir -p coverage-output && chmod 777 coverage-output
           cp "acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg" /tmp/kubeconfig && chmod 400 /tmp/kubeconfig
@@ -130,16 +132,28 @@ jobs:
               --namespace=namespace-lister \
               --label-selector=apps=namespace-lister \
               --test-name=e2e-tests \
-              --output=/workspace/coverage-output || true
+              --output=/workspace/coverage-output
+
+      - name: Warn on Collect e2e coverage failure
+        if: steps.collect_e2e_coverage.outcome == 'failure'
+        run: |
+          echo "::warning title=Coverage Collection Failed::The Collect E2E Coverage failed."
 
       - name: Upload e2e coverage to Codecov
-        if: always()
+        if: steps.collect_e2e_coverage.outcome == 'success'
+        id: upload_e2e_coverage
         uses: codecov/codecov-action@v6
         with:
           use_oidc: true
           flags: e2e-tests
           directory: coverage-output
           fail_ci_if_error: false
+
+      - name: Warn on Upload e2e coverage failure
+        if: steps.upload_e2e_coverage.outcome == 'failure'
+        run: |
+          echo "::warning title=Coverage Upload Failed::The Upload E2E Coverage failed."
+
 
   go-tidy:
     name: Tidy go mod
