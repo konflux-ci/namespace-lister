@@ -127,7 +127,7 @@ jobs:
             -v /tmp/kubeconfig:/kubeconfig:ro \
             -v $PWD/coverage-output:/workspace/coverage-output \
             -e KUBECONFIG=/kubeconfig \
-            quay.io/konflux-ci/konflux-devprod/coverport-cli@sha256:9a2d0a42fcc0dcea31c1b20b2752bb4dfe76f92a99314968e24f525c782a03f1 \
+            quay.io/konflux-ci/konflux-devprod/coverport-cli \
             collect \
               --namespace=namespace-lister \
               --label-selector=apps=namespace-lister \
