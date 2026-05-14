@@ -231,6 +231,18 @@ var _ = Describe("Transform Functions", func() {
 					Resources: []string{"namespaces"},
 					Verbs:     []string{"get"},
 				}}),
+			Entry("preserves multiple matching rules",
+				&rbacv1.Role{
+					ObjectMeta: metav1.ObjectMeta{Name: "multi-match", Namespace: "default"},
+					Rules: []rbacv1.PolicyRule{
+						{APIGroups: []string{""}, Resources: []string{"namespaces"}, Verbs: []string{"get"}},
+						{APIGroups: []string{"", "apps"}, Resources: []string{"namespaces", "pods"}, Verbs: []string{"get", "list"}},
+					},
+				},
+				[]rbacv1.PolicyRule{
+					{APIGroups: []string{""}, Resources: []string{"namespaces"}, Verbs: []string{"get"}},
+					{APIGroups: []string{""}, Resources: []string{"namespaces"}, Verbs: []string{"get"}},
+				}),
 		)
 
 		DescribeTable("returns nil for Roles without namespace-get rules",
@@ -392,6 +404,7 @@ var _ = Describe("Transform Functions", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:          "test-ns",
 					Labels:        map[string]string{"team": "infra"},
+					Annotations:   map[string]string{"note": "keep-me"},
 					ManagedFields: managedFields,
 				},
 				Spec:   corev1.NamespaceSpec{Finalizers: []corev1.FinalizerName{corev1.FinalizerKubernetes}},
@@ -409,6 +422,10 @@ var _ = Describe("Transform Functions", func() {
 			Expect(out.Spec).To(BeEquivalentTo(corev1.NamespaceSpec{}))
 			Expect(out.Status).To(BeEquivalentTo(corev1.NamespaceStatus{}))
 
+			// TrimNamespace intentionally does NOT strip annotations, unlike TrimRole/TrimClusterRole
+			By("ensuring annotations are preserved")
+			Expect(out.Annotations).To(Equal(map[string]string{"note": "keep-me"}))
+			
 			By("ensuring other fields were not mutated")
 			Expect(ns).To(
 				WithTransform(func(ns *corev1.Namespace) *corev1.Namespace {
