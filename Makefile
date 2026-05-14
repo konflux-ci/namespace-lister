@@ -21,6 +21,8 @@ GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$
 IMG ?= namespace-lister:latest
 IMAGE_BUILDER ?= docker
 
+ENABLE_COVERAGE ?= false
+
 ## Local Folders
 $(LOCALBIN):
 	mkdir $(LOCALBIN)
@@ -70,7 +72,7 @@ test-perf: ## Run performance tests
 
 .PHONY: image-build
 image-build:
-	$(IMAGE_BUILDER) build -t "$(IMG)" .
+	$(IMAGE_BUILDER) build --build-arg ENABLE_COVERAGE=$(ENABLE_COVERAGE) -t "$(IMG)" .
 
 .PHONY: generate-code
 generate-code: mockgen  ## Run go generate on the project.

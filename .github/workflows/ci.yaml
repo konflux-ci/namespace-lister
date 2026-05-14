@@ -78,6 +78,8 @@ jobs:
   acceptance:
     name: Run acceptance tests
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -101,8 +103,10 @@ jobs:
 
       - name: Run tests
         env:
-          IMAGE_BUILDER: docker
-          IMG: namespace-lister:pr-${{ github.event.pull_request.number }}
+          KIND_EXPERIMENTAL_PROVIDER: podman
+          IMAGE_BUILDER: podman
+          IMG: konflux-ci.dev/namespace-lister:pr-${{ github.event.pull_request.number }}
+          ENABLE_COVERAGE: "true"
         run: |
           echo "##[group] Preparing environment"
             make -C "acceptance/test/${{ matrix.proxy }}" prepare
@@ -110,6 +114,36 @@ jobs:
           echo "##[group] Running tests"
             make -C "acceptance/test/${{ matrix.proxy }}" test
           echo "##[endgroup]"
+
+      - name: Collect e2e coverage
+        id: collect_e2e_coverage
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p coverage-output && chmod 777 coverage-output
+          cp "acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg" /tmp/kubeconfig && chmod 644 /tmp/kubeconfig
+          podman run --rm \
+            --network host \
+            -v /tmp/kubeconfig:/kubeconfig:ro \
+            -v $PWD/coverage-output:/workspace/coverage-output \
+            -e KUBECONFIG=/kubeconfig \
+            quay.io/konflux-ci/konflux-devprod/coverport-cli@sha256:44c180e1e3a3521b1057f4e85723efef2eb2107a153c9c5e91dfdb0f5631e41d \
+            collect \
+              --namespace=namespace-lister \
+              --label-selector=apps=namespace-lister \
+              --test-name=e2e-tests \
+              --output=/workspace/coverage-output
+
+      - name: Upload e2e coverage to Codecov
+        if: steps.collect_e2e_coverage.outcome == 'success'
+        id: upload_e2e_coverage
+        uses: codecov/codecov-action@v6
+        with:
+          use_oidc: true
+          flags: e2e-tests
+          directory: coverage-output
+          fail_ci_if_error: false
+
 
   go-tidy:
     name: Tidy go mod
