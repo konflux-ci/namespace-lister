@@ -110,6 +110,39 @@ var _ = Describe("Transform Functions", func() {
 			Expect(err).To(MatchError("boom"))
 			Expect(result).To(BeNil())
 		})
+		It("returns input unchanged when called with zero functions", func() {
+			// given
+			ns := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "unchanged"},
+			}
+
+			// when
+			merged := transform.MergeTransformFunc()
+			result, err := merged(ns)
+
+			// then
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeIdenticalTo(ns))
+		})
+
+		It("delegates to a single function", func() {
+			// given
+			nsIn := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: "input"},
+			}
+			nsOut := nsIn.DeepCopy()
+
+			tf := mocks.NewMockTransformFunc(ctrl)
+			tf.EXPECT().TransformFunc(nsIn).Return(nsOut, nil).Times(1)
+
+			// when
+			merged := transform.MergeTransformFunc(tf.TransformFunc)
+			result, err := merged(nsIn)
+
+			// then
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeIdenticalTo(nsOut))
+		})
 	})
 
 	Describe("TrimRole", func() {
