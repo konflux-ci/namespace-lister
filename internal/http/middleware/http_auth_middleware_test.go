@@ -76,7 +76,7 @@ var _ = Describe("HttpAuthMiddleware", func() {
 		By("check the StatusCode is Unauthorized")
 		Expect(w.Result().StatusCode).To(Equal(http.StatusUnauthorized))
 
-		By("check the error log includes the failure, headers, and message")
+		By("check the error log includes the failure and message, not the header")
 		logged := buf.String()
 		Expect(logged).To(And(
 			ContainSubstring(`"msg":"error authenticating request"`),
