@@ -2,6 +2,7 @@ package transform_test
 
 import (
 	"errors"
+	"reflect"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -482,41 +483,12 @@ var _ = Describe("Transform Functions", func() {
 		)
 	})
 
+	// TrimClusterRoleBinding and TrimRoleBinding are aliases of the same
+	// trimBinding function. Full coverage is provided by TrimRoleBinding above.
 	Describe("TrimClusterRoleBinding", func() {
-		DescribeTable("strips annotations and managed fields",
-			func(crb *rbacv1.ClusterRoleBinding) {
-				// when
-				result, err := transform.TrimClusterRoleBinding()(crb.DeepCopy())
-
-				// then
-				By("ensuring fields expected to be stripped were stripped")
-				Expect(err).NotTo(HaveOccurred())
-				out := result.(*rbacv1.ClusterRoleBinding)
-				Expect(out.Annotations).To(BeNil())
-				Expect(out.ManagedFields).To(BeEmpty())
-
-				By("ensuring other fields were not mutated")
-				Expect(crb).To(
-					WithTransform(func(c *rbacv1.ClusterRoleBinding) *rbacv1.ClusterRoleBinding {
-						c.Annotations = nil
-						c.ManagedFields = nil
-						return c
-					}, BeEquivalentTo(out)))
-			},
-			Entry("with annotations",
-				&rbacv1.ClusterRoleBinding{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "test-crb",
-						Annotations: map[string]string{"note": "value"},
-					},
-				}),
-			Entry("with managed fields",
-				&rbacv1.ClusterRoleBinding{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:          "test-crb",
-						ManagedFields: managedFields,
-					},
-				}),
-		)
+		It("is the same function as TrimRoleBinding", func() {
+			Expect(reflect.ValueOf(transform.TrimClusterRoleBinding).Pointer()).To(
+				Equal(reflect.ValueOf(transform.TrimRoleBinding).Pointer()))
+		})
 	})
 })
