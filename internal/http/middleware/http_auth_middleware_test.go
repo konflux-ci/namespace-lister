@@ -109,11 +109,17 @@ var _ = Describe("HttpAuthMiddleware", func() {
 		By("set up the Authn Middleware")
 		m := middleware.AddAuthnMiddleware(authenticatorRequest, nh)
 
-		By("execute the middleware")
+		By("setting up a response recoder")
 		w := httptest.NewRecorder()
+		w.Code = 0
+
+		By("execute the middleware")
 		m.ServeHTTP(w, r)
 
 		By("check the next handler has been invoked")
 		Expect(nhInvoked).To(BeTrue())
+
+		By("checking status was not written to the response")
+		Expect(w.Code).To(BeZero())
 	})
 })
