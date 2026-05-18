@@ -52,6 +52,10 @@ var _ = Describe("HttpAuthMiddleware", func() {
 	})
 
 	It("returns Unauthorized on errored requests", func(ctx context.Context) {
+		headers := map[string][]string{
+			"X-Test-Auth": []string{"probe"},
+		}
+
 		By("building a JSON logger that writes to a buffer")
 		var buf bytes.Buffer
 		l := newBufferLogger(&buf)
@@ -59,7 +63,11 @@ var _ = Describe("HttpAuthMiddleware", func() {
 		By("building the request with a context logger and a header for the error log")
 		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		Expect(err).NotTo(HaveOccurred())
-		r.Header.Set("X-Test-Auth", "probe")
+		for k, vv := range headers {
+			for _, v := range vv {
+				r.Header.Set(k, v)
+			}
+		}
 		r = r.WithContext(log.SetLoggerIntoContext(r.Context(), l))
 
 		By("set up an always-erroring authenticator")
@@ -76,14 +84,20 @@ var _ = Describe("HttpAuthMiddleware", func() {
 		By("check the StatusCode is Unauthorized")
 		Expect(w.Result().StatusCode).To(Equal(http.StatusUnauthorized))
 
-		By("check the error log includes the failure and message, not the header")
+		By("check the error log includes the failure and message")
 		logged := buf.String()
 		Expect(logged).To(And(
 			ContainSubstring(`"msg":"error authenticating request"`),
 			ContainSubstring(`"error contacting the APIServer"`),
-			Not(ContainSubstring(`"X-Test-Auth"`)),
-			Not(ContainSubstring(`"probe"`)),
 		))
+
+		By("check that the error log doesn't include headers")
+		for k, hv := range headers {
+			Expect(logged).To(Not(ContainSubstring(k)))
+			for _, h := range hv {
+				Expect(logged).NotTo(ContainSubstring(h))
+			}
+		}
 	})
 
 	It("runs the next handler if authentication pass", func(ctx context.Context) {
