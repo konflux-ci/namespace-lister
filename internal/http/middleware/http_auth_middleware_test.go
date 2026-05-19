@@ -137,4 +137,68 @@ var _ = Describe("HttpAuthMiddleware", func() {
 		By("checking status was not written to the response")
 		Expect(w.Code).To(BeZero())
 	})
+
+	It("should log the authenticated request at debug level", func(ctx context.Context) {
+		By("building a JSON logger")
+		var buf bytes.Buffer
+		l := newBufferLogger(&buf)
+
+		By("building the request with the debug logger injected")
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		Expect(err).NotTo(HaveOccurred())
+		r = r.WithContext(log.SetLoggerIntoContext(r.Context(), l))
+
+		By("set up an always-passing authenticator")
+		rs := &authenticator.Response{User: &user.DefaultInfo{}}
+		authenticatorRequest.EXPECT().AuthenticateRequest(r).
+			Times(1).
+			Return(rs, true, nil)
+
+		By("set up a no-op next handler")
+		nh := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+		By("execute the middleware")
+		m := middleware.AddAuthnMiddleware(authenticatorRequest, nh)
+		w := httptest.NewRecorder()
+		m.ServeHTTP(w, r)
+
+		By("check the debug log includes the authentication message and user details")
+		logged := buf.String()
+		Expect(logged).To(And(
+			ContainSubstring("request authenticated"),
+			ContainSubstring("user"),
+		))
+	})
+
+	It("does not panic when authenticator returns nil response with ok", func(ctx context.Context) {
+		By("building the request the middleware will pass to the authenticator")
+		r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("set up an authenticator that returns nil response with ok=true")
+		authenticatorRequest.EXPECT().AuthenticateRequest(r).
+			Times(1).
+			Return(nil, true, nil)
+
+		By("set up a validating next HTTP handler")
+		nhInvoked := false
+		nh := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			nhInvoked = true
+			Expect(r.Context().Value(contextkey.ContextKeyUserDetails)).To(BeNil())
+			w.WriteHeader(http.StatusOK)
+		})
+
+		By("set up the Authn Middleware")
+		m := middleware.AddAuthnMiddleware(authenticatorRequest, nh)
+
+		By("execute the middleware")
+		w := httptest.NewRecorder()
+		m.ServeHTTP(w, r)
+
+		By("check the next handler has been invoked")
+		Expect(nhInvoked).To(BeTrue())
+
+		By("check the StatusCode is OK")
+		Expect(w.Result().StatusCode).To(Equal(http.StatusOK))
+	})
 })
