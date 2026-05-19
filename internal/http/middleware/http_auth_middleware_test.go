@@ -21,7 +21,8 @@ import (
 
 var _ = Describe("HttpAuthMiddleware", func() {
 	newBufferLogger := func(buf *bytes.Buffer) *slog.Logger {
-		return slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		opts := &slog.HandlerOptions{Level: slog.Level(-1000)} // log at maximum verbosity
+		return slog.New(slog.NewJSONHandler(buf, opts))
 	}
 
 	var authenticatorRequest *mocks.MockRequest
