@@ -30,7 +30,7 @@ RUN if [ "$ENABLE_COVERAGE" = "true" ]; then \
         CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -trimpath -a -o /tmp/server . ; \
     fi
 
-FROM registry.access.redhat.com/ubi9/ubi-micro@sha256:c73fdd3c5a5df609610993b69966ae0ff259b26a2dfe1ebec068480a1eddd26d
+FROM registry.access.redhat.com/ubi9/ubi-micro@sha256:4b45a7cbeab6b02e6db359ce007439ce612b296c29d9d0fb688a9d24d3b56f02
 WORKDIR /
 COPY --from=builder /tmp/server .
 USER 65532:65532
