@@ -46,11 +46,14 @@ func userRequestIsRejectedWithUnauthorizerError(ctx context.Context) (context.Co
 	}
 
 	nn := corev1.NamespaceList{}
-	if err := cli.List(ctx, &nn); !errors.IsUnauthorized(err) {
-		return ctx, err
+	if err := cli.List(ctx, &nn); err != nil {
+		if errors.IsUnauthorized(err) {
+			return ctx, nil
+		}
+		return ctx, fmt.Errorf("expected unauthorized error, got: %v", err)
 	}
 
-	return ctx, nil
+	return ctx, fmt.Errorf("expected unauthorized error, but request succeeded with %d items", len(nn.Items))
 }
 
 func NTenantNamespacesExist(ctx context.Context, limit int) (context.Context, error) {
