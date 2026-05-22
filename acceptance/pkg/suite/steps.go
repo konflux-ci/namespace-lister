@@ -257,6 +257,7 @@ func TheUserRetrievesNoNamespaces(ctx context.Context) (context.Context, error) 
 }
 
 func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (context.Context, error) {
+	run := tcontext.RunId(ctx)
 	cli, err := tcontext.InvokeBuildUserClientFunc(ctx)
 	if err != nil {
 		return ctx, err
@@ -269,21 +270,31 @@ func TheUserCanRetrieveOnlyTheNamespacesTheyHaveAccessTo(ctx context.Context) (c
 			return false, nil
 		}
 
-		enn := tcontext.Namespaces(ctx)
-		if expected, actual := len(enn), len(ann.Items); expected != actual {
-			ad := make([]string, len(ann.Items))
-			for _, n := range ann.Items {
-				ad = append(ad, n.Name)
+		// filter to the current test run to avoid counting leftover
+		// namespaces from previous scenarios (e.g. the system:authenticated
+		// group scenario grants access to all authenticated SAs)
+		var runItems []corev1.Namespace
+		for _, n := range ann.Items {
+			if n.Labels["namespace-lister/test-run"] == run {
+				runItems = append(runItems, n)
 			}
-			log.Printf("expected %d namespaces, actual %d: %v", expected, actual, ad)
+		}
+
+		enn := tcontext.Namespaces(ctx)
+		if expected, actual := len(enn), len(runItems); expected != actual {
+			names := make([]string, len(runItems))
+			for i, n := range runItems {
+				names[i] = n.Name
+			}
+			log.Printf("expected %d namespaces for run %s, actual %d: %v", expected, run, actual, names)
 			return false, nil
 		}
 
 		for _, en := range enn {
-			if !slices.ContainsFunc(ann.Items, func(an corev1.Namespace) bool {
+			if !slices.ContainsFunc(runItems, func(an corev1.Namespace) bool {
 				return en.Name == an.Name
 			}) {
-				log.Printf("expected namespace %s not found in actual namespace list: %v", en.Name, ann.Items)
+				log.Printf("expected namespace %s not found in actual namespace list", en.Name)
 				return false, nil
 			}
 		}
