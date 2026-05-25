@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cucumber/godog"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	tcontext "github.com/konflux-ci/namespace-lister/acceptance/pkg/context"
@@ -44,6 +45,14 @@ func buildUnauthenticatedUserClientForAuthProxy(ctx context.Context) (client.Cli
 		return nil, err
 	}
 
-	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
-	return arest.BuildClient(cfg)
+	// build a new config with only connectivity settings (no credentials)
+	unauthCfg := &rest.Config{
+		Host: suite.EnvKonfluxAddressOrDefault(defaultTestAddress),
+		TLSClientConfig: rest.TLSClientConfig{
+			Insecure: cfg.Insecure,
+			CAFile:   cfg.CAFile,
+			CAData:   cfg.CAData,
+		},
+	}
+	return arest.BuildClient(unauthCfg)
 }
