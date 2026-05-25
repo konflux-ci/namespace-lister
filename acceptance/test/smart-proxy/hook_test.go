@@ -17,6 +17,7 @@ func InjectHooks(ctx *godog.ScenarioContext) {
 	suite.InjectBaseHooks(ctx)
 
 	ctx.Before(injectBuildUserClient)
+	ctx.Before(suite.InjectServiceAddresses(defaultTestAddress))
 }
 
 func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
@@ -24,7 +25,6 @@ func injectBuildUserClient(ctx context.Context, sc *godog.Scenario) (context.Con
 }
 
 func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
-	// build impersonating client
 	cfg, err := arest.NewDefaultClientConfig()
 	if err != nil {
 		return nil, err
@@ -39,14 +39,10 @@ func buildUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
 }
 
 func buildUnauthenticatedUserClientForAuthProxy(ctx context.Context) (client.Client, error) {
-	// build impersonating client
 	cfg, err := arest.NewDefaultClientConfig()
 	if err != nil {
 		return nil, err
 	}
-
-	// the client should be unauthenticated,
-	// so skip any impersonation here
 
 	cfg.Host = suite.EnvKonfluxAddressOrDefault(defaultTestAddress)
 	return arest.BuildClient(cfg)

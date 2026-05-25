@@ -2,6 +2,7 @@ package context
 
 import (
 	"context"
+	"crypto/tls"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -10,10 +11,12 @@ import (
 type ContextKey string
 
 const (
-	ContextKeyNamespaces      ContextKey = "namespaces"
-	ContextKeyRunId           ContextKey = "run-id"
-	ContextKeyUserInfo        ContextKey = "user-info"
-	ContextKeyBuildUserClient ContextKey = "build-user-client"
+	ContextKeyNamespaces             ContextKey = "namespaces"
+	ContextKeyRunId                  ContextKey = "run-id"
+	ContextKeyUserInfo               ContextKey = "user-info"
+	ContextKeyBuildUserClient        ContextKey = "build-user-client"
+	ContextKeyNamespaceListerAddress ContextKey = "namespace-lister-address"
+	ContextKeyTLSConfig ContextKey = "tls-config"
 )
 
 type BuildUserClientFunc func(context.Context) (client.Client, error)
@@ -48,6 +51,22 @@ func WithRunId(ctx context.Context, runId string) context.Context {
 
 func RunId(ctx context.Context) string {
 	return get[string](ctx, ContextKeyRunId)
+}
+
+func WithNamespaceListerAddress(ctx context.Context, address string) context.Context {
+	return into(ctx, ContextKeyNamespaceListerAddress, address)
+}
+
+func NamespaceListerAddress(ctx context.Context) string {
+	return get[string](ctx, ContextKeyNamespaceListerAddress)
+}
+
+func WithTLSConfig(ctx context.Context, cfg *tls.Config) context.Context {
+	return into(ctx, ContextKeyTLSConfig, cfg)
+}
+
+func TLSConfig(ctx context.Context) *tls.Config {
+	return get[*tls.Config](ctx, ContextKeyTLSConfig)
 }
 
 // aux
