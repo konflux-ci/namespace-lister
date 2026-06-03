@@ -37,6 +37,7 @@ import (
 const (
 	NamespaceTypeLabelKey       string = "konflux-ci.dev/type"
 	NamespaceTypeUserLabelValue string = "user"
+	PerfTestLabelKey            string = "namespace-lister.konflux-ci.dev/perf-test"
 )
 
 var _ = Describe("Authorizing requests", Serial, Ordered, Label("perf"), func() {
@@ -69,6 +70,22 @@ var _ = Describe("Authorizing requests", Serial, Ordered, Label("perf"), func() 
 
 		log.Println("allowed namespaces", len(ans))
 	})
+
+	AfterAll(func(ctx context.Context) {
+		// BeforeAll may fail before the client is created; skip cleanup rather than panic.
+		if c == nil {
+			return
+		}
+
+		label := client.MatchingLabels{PerfTestLabelKey: "true"}
+
+		if err := c.DeleteAllOf(ctx, &corev1.Namespace{}, label); err != nil {
+			log.Printf("perf test cleanup: delete namespaces: %v", err)
+		}
+		if err := c.DeleteAllOf(ctx, &rbacv1.ClusterRole{}, label); err != nil {
+			log.Printf("perf test cleanup: delete cluster roles: %v", err)
+		}
+	}, NodeTimeout(10*time.Minute))
 
 	BeforeEach(func(ctx context.Context) {
 		// create cache
@@ -228,7 +245,8 @@ func matchingClusterRoles(quantity int) []client.Object {
 	for i := range quantity {
 		cr := &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("perf-cluster-role-matching-%d", i),
+				Name:   fmt.Sprintf("perf-cluster-role-matching-%d", i),
+				Labels: map[string]string{PerfTestLabelKey: "true"},
 			},
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -249,6 +267,7 @@ func nonMatchingClusterRoles(quantity int) []client.Object {
 		cr := &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "perf-cluster-role-non-matching-",
+				Labels:       map[string]string{PerfTestLabelKey: "true"},
 			},
 		}
 		crr[i] = cr
@@ -264,6 +283,7 @@ func namespaces(generateName string, quantity int) []client.Object {
 				GenerateName: generateName,
 				Labels: map[string]string{
 					NamespaceTypeLabelKey: NamespaceTypeUserLabelValue,
+					PerfTestLabelKey:      "true",
 				},
 			},
 		}
