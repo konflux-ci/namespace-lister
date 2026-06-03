@@ -1,3 +1,5 @@
+//go:build perf
+
 package main
 
 import (
@@ -37,7 +39,7 @@ const (
 	NamespaceTypeUserLabelValue string = "user"
 )
 
-var _ = Describe("Authorizing requests", Serial, Ordered, func() {
+var _ = Describe("Authorizing requests", Serial, Ordered, Label("perf"), func() {
 	username := "user"
 	var restConfig *rest.Config
 	var c client.Client
@@ -75,7 +77,7 @@ var _ = Describe("Authorizing requests", Serial, Ordered, func() {
 		cacheCfg = &resourcecache.Config{RestConfig: restConfig, NamespacesLabelSelector: ls}
 	})
 
-	It("efficiently authorize on a huge environment with cached accesses", Serial, Label("perf"), func(ctx context.Context) {
+	It("efficiently authorize on a huge environment with cached accesses", Serial, func(ctx context.Context) {
 		// new gomega experiment
 		experiment := gmeasure.NewExperiment("Authorizing Request")
 
