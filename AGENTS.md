@@ -61,3 +61,9 @@ a user has `get` access on, using in-memory RBAC caching for performance.
 - Both `dumb-proxy` and `smart-proxy` acceptance setups must pass — they
   test different authentication flows.
 - Coverage collection requires coverport-cli and a running instrumented pod.
+
+## Skills
+
+- Before opening a PR, writing a PR description, or interpreting CI results, read `skills/pr-workflow.md`
+- When a CI check fails on a PR, read `skills/ci-troubleshooting.md`
+- When working interactively on new features or significant changes, read `skills/brainstorming-workflow.md` before making changes
