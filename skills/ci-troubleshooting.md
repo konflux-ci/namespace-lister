@@ -61,7 +61,7 @@ make test
 If a specific test is failing, run it in isolation:
 
 ```bash
-go run github.com/onsi/ginkgo/v2/ginkgo --focus "description of failing test" ./...
+GINKGO_ARGS='--focus="description of failing test"' make test
 ```
 
 ### performance-tests
