@@ -110,4 +110,5 @@ In interactive sessions (human + agent), always confirm with the human before pu
 | Branching from a stale main | Always fetch and reset from origin before branching |
 | Missing Jira key in commit message | Prefix every commit with `KFLUXINFRA-1234` |
 | Forgetting to run both acceptance setups | Both `dumb-proxy` and `smart-proxy` must pass |
-| Running tests with `go test ./...` | Always use `make test` — this project uses Ginkgo, not plain `go test` |
+| Running tests with `go test ./...` | Always use `make test` — it wraps Ginkgo with the project's preferred flags and configuration |
+| Forgetting to run perf tests locally | Run `make test-perf` before pushing performance-sensitive changes |

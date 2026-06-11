@@ -74,7 +74,7 @@ make test-perf
 
 ### acceptance
 
-Matrix of `dumb-proxy` and `smart-proxy` acceptance test setups running on Kind clusters with godog (Cucumber BDD). Both setups must pass.
+Matrix of `dumb-proxy` and `smart-proxy` acceptance test setups running on Kind clusters with [cucumber/godog](https://github.com/cucumber/godog) (BDD). Both setups must pass.
 
 Common causes of failure:
 - Container image build failure (check Podman/Docker availability)
@@ -84,8 +84,8 @@ Common causes of failure:
 To reproduce locally:
 
 ```bash
-make -C acceptance/test/dumb-proxy prepare && make -C acceptance/test/dumb-proxy test
-make -C acceptance/test/smart-proxy prepare && make -C acceptance/test/smart-proxy test
+make -C acceptance/test/dumb-proxy prepare test
+make -C acceptance/test/smart-proxy prepare test
 ```
 
 If logs show no relevant errors and the failure looks intermittent, rerun the failed job:
