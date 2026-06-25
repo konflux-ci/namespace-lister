@@ -29,9 +29,12 @@ lint: ## Run go linter.
 image-build:
 	$(MAKE) -C $(ROOT_DIR)/.. image-build
 
+KIND_NODE_IMG ?=
+KIND_NODE_IMG_FLAG = $(if $(KIND_NODE_IMG),--image "kindest/node:$(KIND_NODE_IMG)",)
+
 .PHONY: kind-create
 kind-create:
-	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml
+	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml $(KIND_NODE_IMG_FLAG)
 
 .PHONY: kind-load-image
 kind-load-image:
