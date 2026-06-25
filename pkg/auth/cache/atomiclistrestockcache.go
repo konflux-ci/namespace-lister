@@ -47,6 +47,9 @@ func (c *AtomicListRestockCache[K, S, E, T, I]) list(key K) S {
 func (c *AtomicListRestockCache[K, S, E, T, I]) listAll(keys ...K) S {
 	// retrieve cached data
 	m := c.data.Load()
+	if m == nil {
+		return nil
+	}
 
 	// worst case scenario: namespaces from provided users are different among them
 	maxSize := 0
