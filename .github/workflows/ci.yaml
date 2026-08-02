@@ -101,6 +101,12 @@ jobs:
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
+      - name: Install pinned kind version
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.32.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
       - name: Run tests
         env:
           KIND_EXPERIMENTAL_PROVIDER: podman
