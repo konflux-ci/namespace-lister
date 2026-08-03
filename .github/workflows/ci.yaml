@@ -37,7 +37,7 @@ jobs:
         run: make test
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           use_oidc: true
           flags: unit-tests
@@ -137,7 +137,7 @@ jobs:
       - name: Upload e2e coverage to Codecov
         if: steps.collect_e2e_coverage.outcome == 'success'
         id: upload_e2e_coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           use_oidc: true
           flags: e2e-tests
