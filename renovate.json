@@ -36,7 +36,7 @@
         "minor",
         "patch",
         "digest"
-      ],
+      ]
     },
     {
       "groupName": "go-modules major",
@@ -61,7 +61,7 @@
         "minor",
         "major",
         "digest"
-      ],
+      ]
     }
   ],
   "customManagers": [
