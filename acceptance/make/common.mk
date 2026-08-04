@@ -1,4 +1,6 @@
 KIND_CLUSTER_NAME ?= namespace-lister-acceptance-tests
+# renovate: datasource=docker depName=kindest/node versioning=docker
+KIND_NODE_IMAGE ?= kindest/node:v1.35.5
 IMG ?= namespace-lister:latest
 IMAGE_BUILDER ?= docker
 
@@ -31,7 +33,7 @@ image-build:
 
 .PHONY: kind-create
 kind-create:
-	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml
+	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml --image "$(KIND_NODE_IMAGE)"
 
 .PHONY: kind-load-image
 kind-load-image:

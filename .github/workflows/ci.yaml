@@ -101,6 +101,17 @@ jobs:
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
+      - name: Install pinned kind version
+        # Renovate updates KIND_VERSION automatically; only stable releases are proposed.
+        # If kind and node image are updated independently a version mismatch may cause
+        # cluster creation to fail, which CI will catch before merge.
+        run: |
+          # renovate: datasource=github-releases depName=kubernetes-sigs/kind
+          KIND_VERSION=v0.32.0
+          curl -Lo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
       - name: Run tests
         env:
           KIND_EXPERIMENTAL_PROVIDER: podman
