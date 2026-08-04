@@ -32,7 +32,7 @@ image-build:
 
 .PHONY: kind-create
 kind-create:
-	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml --image $(KIND_NODE_IMAGE)
+	$(KIND) create cluster --name "$(KIND_CLUSTER_NAME)" --config kind-config.yaml --image "$(KIND_NODE_IMAGE)"
 
 .PHONY: kind-load-image
 kind-load-image:
