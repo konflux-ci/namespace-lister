@@ -1,6 +1,6 @@
 KIND_CLUSTER_NAME ?= namespace-lister-acceptance-tests
 # renovate: datasource=docker depName=kindest/node versioning=docker
-KIND_NODE_IMAGE ?= kindest/node:v1.35.5
+KIND_NODE_IMAGE ?= kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95
 IMG ?= namespace-lister:latest
 IMAGE_BUILDER ?= docker
 
