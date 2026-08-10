@@ -102,8 +102,8 @@
         "**/common.mk"
       ],
       "matchStrings": [
-        "kindest/node:(?<currentValue>v[^\\s#]+)\\s*#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)\\s+versioning=(?<versioning>[^\\s]+)",
-        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)\\s+versioning=(?<versioning>[^\\s]+)\\n[A-Z_]+\\s*\\?=\\s*kindest/node:(?<currentValue>v[^\\s#]+)"
+        "kindest/node:(?<currentValue>v[^@\\s#]+)@(?<currentDigest>sha256:[a-f0-9]+)\\s*#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)\\s+versioning=(?<versioning>[^\\s]+)",
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>[^\\s]+)\\s+versioning=(?<versioning>[^\\s]+)\\n[A-Z_]+\\s*\\?=\\s*kindest/node:(?<currentValue>v[^@\\s#]+)@(?<currentDigest>sha256:[a-f0-9]+)"
       ]
     }
   ]
