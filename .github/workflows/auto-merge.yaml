@@ -20,7 +20,7 @@ jobs:
         with:
           client-id: ${{ secrets.KONFLUX_INFRA_AUTO_MERGER_APP_ID }}
           private-key: ${{ secrets.KONFLUX_INFRA_AUTO_MERGER_APP_PRIVATE_KEY }}
-      - uses: konflux-ci/deptriage@b4829b10aabc169a71fc3f84641b8da094a4339a # main
+      - uses: konflux-ci/deptriage@3ef4408c0d131921cb5e863cf1fea2050561a880 # main
         with:
           command: merge
           head-sha: ${{ github.event.check_suite.head_sha }}
