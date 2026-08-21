@@ -62,12 +62,12 @@ jobs:
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
-      - uses: kubernetes-sigs/kwok@172defa550f15c9ffd4169896c32bba4770f6577 # main
+      - uses: kubernetes-sigs/kwok@9399bb9c632b2c1b94b60613466e9addcca132a5 # main
         with:
           command: 'kwokctl'
 
       - name: Set up kwokctl
-        uses: kubernetes-sigs/kwok@172defa550f15c9ffd4169896c32bba4770f6577 # main
+        uses: kubernetes-sigs/kwok@9399bb9c632b2c1b94b60613466e9addcca132a5 # main
         with:
           command: kwokctl
 
