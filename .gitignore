@@ -27,3 +27,6 @@ go.work.sum
 # local folder
 bin
 out
+
+# acceptance test debug dumps (collected by CI on failure)
+e2e-debug-logs

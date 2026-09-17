@@ -81,6 +81,20 @@ Common causes of failure:
 - Kind cluster setup failure (infrastructure flake — rerun)
 - Actual test scenario failure (check the godog output for the failing step)
 
+When the job fails, it attaches a cluster dump to the workflow run. Download it before
+trying to reproduce anything:
+
+```bash
+gh run download <run-id> --repo konflux-ci/namespace-lister \
+  --name e2e-debug-logs-dumb-proxy --dir /tmp/e2e-logs
+```
+
+Use `--name e2e-debug-logs-smart-proxy` for the other matrix leg. The dump contains
+namespace-lister and proxy pod logs (including `--previous` for crash loops), `describe pod`
+output, events for the `namespace-lister` and `acceptance-tests` namespaces, and the
+ServiceAccounts, RoleBindings, ClusterRoleBindings and Namespaces at the end of the run.
+Artifacts are retained for 14 days, and passing runs upload nothing.
+
 To reproduce locally:
 
 ```bash
