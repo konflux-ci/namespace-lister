@@ -62,12 +62,12 @@ jobs:
         with:
           go-version: ${{ steps.go_version.outputs.version }}
 
-      - uses: kubernetes-sigs/kwok@3f96758cce0a3d4ffecdd055a80f71e0e406e333 # main
+      - uses: kubernetes-sigs/kwok@a0b1730f9ee1a4b41a43cd7945c04372ceb37c61 # main
         with:
           command: 'kwokctl'
 
       - name: Set up kwokctl
-        uses: kubernetes-sigs/kwok@3f96758cce0a3d4ffecdd055a80f71e0e406e333 # main
+        uses: kubernetes-sigs/kwok@a0b1730f9ee1a4b41a43cd7945c04372ceb37c61 # main
         with:
           command: kwokctl
 
@@ -113,6 +113,7 @@ jobs:
           sudo mv ./kind /usr/local/bin/kind
 
       - name: Run tests
+        id: run_tests
         env:
           KIND_EXPERIMENTAL_PROVIDER: podman
           IMAGE_BUILDER: podman
@@ -125,6 +126,67 @@ jobs:
           echo "##[group] Running tests"
             make -C "acceptance/test/${{ matrix.proxy }}" test
           echo "##[endgroup]"
+
+      # Dump cluster state before the coverage step touches the pods, so a failing
+      # acceptance run carries everything needed to diagnose it. Only runs on failure:
+      # green runs leave e2e-debug-logs/ absent and upload nothing.
+      - name: Collect debug logs
+        if: always() && steps.run_tests.outcome == 'failure'
+        continue-on-error: true
+        env:
+          KUBECONFIG: acceptance/test/${{ matrix.proxy }}/out/namespace-lister-admin.kcfg
+          PROXY: ${{ matrix.proxy }}
+        run: |
+          mkdir -p e2e-debug-logs
+
+          case "${PROXY}" in
+            dumb-proxy) proxy_selector='app=namespace-lister-proxy' ;;
+            smart-proxy) proxy_selector='app=namespace-lister-proxy-auth' ;;
+            *) proxy_selector='app=namespace-lister-proxy' ;;
+          esac
+
+          # Never fail the job over a diagnostic command: the cluster may not even exist
+          # if `make prepare` is what died.
+          dump() {
+            out="e2e-debug-logs/$1"
+            shift
+            echo "\$ $*" > "${out}"
+            "$@" >> "${out}" 2>&1 || true
+          }
+
+          dump pods-all.txt \
+            kubectl get pods -A -o wide
+          dump namespace-lister-logs.txt \
+            kubectl logs -n namespace-lister -l apps=namespace-lister --all-containers --tail=-1 --prefix
+          dump namespace-lister-logs-previous.txt \
+            kubectl logs -n namespace-lister -l apps=namespace-lister --all-containers --prefix --previous
+          dump namespace-lister-describe.txt \
+            kubectl describe pod -n namespace-lister -l apps=namespace-lister
+          dump proxy-logs.txt \
+            kubectl logs -n namespace-lister -l "${proxy_selector}" --all-containers --tail=-1 --prefix
+          dump proxy-describe.txt \
+            kubectl describe pod -n namespace-lister -l "${proxy_selector}"
+          dump events-namespace-lister.txt \
+            kubectl get events -n namespace-lister --sort-by=.lastTimestamp
+          dump events-acceptance-tests.txt \
+            kubectl get events -n acceptance-tests --sort-by=.lastTimestamp
+          dump serviceaccounts.txt \
+            kubectl get sa -n acceptance-tests -o yaml
+          dump rolebindings.txt \
+            kubectl get rolebindings -A -o yaml
+          dump clusterrolebindings.txt \
+            kubectl get clusterrolebindings -o yaml
+          dump namespaces.txt \
+            kubectl get namespaces -o yaml
+
+      - name: Upload debug logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-debug-logs-${{ matrix.proxy }}
+          path: e2e-debug-logs/
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Collect e2e coverage
         id: collect_e2e_coverage
