@@ -48,6 +48,19 @@
       ]
     },
     {
+      "description": "Indirect Go major bumps are structurally invalid — major versions use different module paths and indirect versions are determined by direct deps",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "indirect"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    },
+    {
       "groupName": "go-modules controller-runtime and k8s",
       "description": "group kubernetes updates together",
       "matchPackageNames": [
