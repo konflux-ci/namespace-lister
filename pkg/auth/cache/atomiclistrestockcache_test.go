@@ -35,6 +35,19 @@ var _ = Describe("AuthCache", func() {
 		Expect(nn).To(BeEmpty())
 	})
 
+	It("returns nil when cache has not been restocked and multiple keys are provided", func() {
+		// given
+		emptyCache := cache.NewAtomicListRestockAccessCache()
+		sub1 := rbacv1.Subject{Kind: rbacv1.UserKind, Name: "myuser"}
+		sub2 := rbacv1.Subject{Kind: rbacv1.GroupKind, Name: "system:authenticated"}
+
+		// when
+		nn := emptyCache.List(sub1, sub2)
+
+		// then
+		Expect(nn).To(BeNil())
+	})
+
 	It("matches a subject", func() {
 		// given
 		sub := rbacv1.Subject{Kind: "User", Name: "myuser"}
