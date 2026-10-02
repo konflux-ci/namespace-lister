@@ -30,3 +30,9 @@ out
 
 # acceptance test debug dumps (collected by CI on failure)
 e2e-debug-logs
+
+# Agent security
+.claude
+.cursor
+.vscode
+.agents
