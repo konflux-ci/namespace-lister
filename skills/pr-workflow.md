@@ -91,7 +91,7 @@ Trailers (at end of commit message body). Use the actual agent/tool identity:
 | **go-tidy** | Verifies `go.mod` and `go.sum` are tidy. |
 | **lint-go** | golangci-lint with version pinned in Makefile. |
 | **lint-yaml** | yamllint on all YAML manifests. |
-| **Agent File Policy** | Two-workflow gate (`agent-files-detect` + `agent-files-enforce`). Blocks vendor directories (.claude, .cursor, .vscode, .agents); labels PRs `agent-config-review-required` when protected agent config files (AGENTS.md, CLAUDE.md, GEMINI.md, skills/, agent-files-*.yaml) change — human must remove the label to unblock. |
+| **Agent File Policy** | Blocks vendor directories and labels PRs touching protected agent config files — see [CI Troubleshooting](ci-troubleshooting.md#agent-file-policy) for details. |
 | **Tekton pipelines** | Multi-arch container builds and security scans (Clair, Snyk, Coverity, ClamAV). Run inside Konflux — best investigated manually through the Konflux UI. |
 
 **CI caveats:**

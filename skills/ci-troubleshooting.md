@@ -147,7 +147,7 @@ git commit -m "Remove vendor-specific agent directories"
 
 Use AGENTS.md and `skills/` for agent configuration instead.
 
-**`agent-config-review-required` label applied** — The `agent-files-enforce` workflow detected changes to protected agent config files (AGENTS.md, CLAUDE.md, GEMINI.md, `skills/`, or the `agent-files-*.yaml` workflow files themselves). The PR is labeled `agent-config-review-required` and the `Agent File Policy` commit status blocks merge. A human reviewer with write access must review the agent config changes and remove the label to unblock.
+**`agent-config-review-required` label applied** — The `agent-files-enforce` workflow detected changes to protected agent config files (AGENTS.md, CLAUDE.md, GEMINI.md, `skills/`, or the `agent-files-{detect,enforce}.yaml` workflow files themselves). The PR is labeled `agent-config-review-required` and the `Agent File Policy` commit status blocks merge. A human reviewer with write access must review the agent config changes and remove the label to unblock.
 
 **Stale artifact or freshness check issues** — The enforce workflow verifies that the detection artifact matches the PR's current head SHA. If the PR received new commits after the detect workflow started, the artifact is considered stale and label/status updates are skipped. Push a new commit to trigger a fresh detection run:
 
