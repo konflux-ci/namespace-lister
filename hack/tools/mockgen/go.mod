@@ -1,6 +1,6 @@
 module github.com/konflux-ci/namespace-lister/hack/tools/mockgen
 
-go 1.25.0
+go 1.26.10
 
 require go.uber.org/mock v0.6.0
 
