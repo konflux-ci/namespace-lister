@@ -51,6 +51,12 @@ a user has `get` access on, using in-memory RBAC caching for performance.
 - `go-tidy` — verifies `go.mod` and `go.sum` are tidy.
 - `lint-go` — golangci-lint (version from Makefile).
 - `lint-yaml` — yamllint on all YAML manifests.
+- `agent-files-detect` — detects changes to protected agent config files
+  (AGENTS.md, CLAUDE.md, GEMINI.md, skills/, .github/workflows/agent-files-{detect,enforce}.yaml)
+  and blocks vendor-specific directories (.claude, .cursor, .vscode, .agents).
+- `agent-files-enforce` — labels PRs with `agent-config-review-required`
+  when protected files are changed, posts `Agent File Policy` commit status
+  to block merge until the label is removed by a human reviewer.
 - `dep-triage` — auto-triages Renovate/Konflux bot dependency PRs.
 - `auto-merge` — merges approved dependency PRs when all checks pass.
 

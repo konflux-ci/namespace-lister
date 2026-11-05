@@ -134,6 +134,28 @@ YAML formatting errors (trailing whitespace, wrong indentation, missing newline 
 make lint-yaml
 ```
 
+### Agent File Policy
+
+Two workflows enforce the Agent File Policy: `agent-files-detect` and `agent-files-enforce`.
+
+**`block-vendor-dirs` failure** — The `agent-files-detect` workflow found vendor-specific directories (`.claude`, `.cursor`, `.vscode`, `.agents`) in the repository tree. Remove these directories from your commit:
+
+```bash
+git rm -r .claude .cursor .vscode .agents 2>/dev/null
+git commit -m "Remove vendor-specific agent directories"
+```
+
+Use AGENTS.md and `skills/` for agent configuration instead.
+
+**`agent-config-review-required` label applied** — The `agent-files-enforce` workflow detected changes to protected agent config files (AGENTS.md, CLAUDE.md, GEMINI.md, `skills/`, or the `agent-files-{detect,enforce}.yaml` workflow files themselves). The PR is labeled `agent-config-review-required` and the `Agent File Policy` commit status blocks merge. A human reviewer with write access must review the agent config changes and remove the label to unblock.
+
+**Stale artifact or freshness check issues** — The enforce workflow verifies that the detection artifact matches the PR's current head SHA. If the PR received new commits after the detect workflow started, the artifact is considered stale and label/status updates are skipped. Push a new commit to trigger a fresh detection run:
+
+```bash
+git commit --allow-empty -m "Trigger agent file detection"
+git push
+```
+
 ### Tekton pipeline failures
 
 The `.tekton/` pipelines run security scans (Clair, Snyk, Coverity, ClamAV, SAST) and multi-arch container builds. These run inside Konflux and their logs are not accessible from the CLI. If they fail:
