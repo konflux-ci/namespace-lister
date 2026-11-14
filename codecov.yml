@@ -22,7 +22,7 @@ flags:
   unit-tests:
     carryforward: true
   e2e-tests:
-    carryforward: true
+    carryforward: false
 comment:
   layout: reach,diff,flags,files,footer
   require_changes: true
